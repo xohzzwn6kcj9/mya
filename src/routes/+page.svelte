@@ -7,10 +7,19 @@
     'Nanum Myeongjo',
     'Nanum Pen Script',
     'Gaegu',
-    'Dongle'
+    'Dongle',
+    'Black Han Sans',
+    'Do Hyeon',
+    'Jua',
+    'Poor Story',
+    'Stylish',
+    'Sunflower',
+    'Yeon Sung',
+    'Single Day',
+    'Hi Melody'
   ];
 
-  const colors = [
+  const textColors = [
     '#FF6B6B',
     '#4ECDC4',
     '#45B7D1',
@@ -18,15 +27,42 @@
     '#FFEEAD',
     '#D4A5A5',
     '#9B59B6',
-    '#3498DB'
+    '#3498DB',
+    '#E74C3C',
+    '#2ECC71',
+    '#F1C40F',
+    '#1ABC9C',
+    '#E67E22',
+    '#34495E',
+    '#16A085'
+  ];
+
+  const backgroundColors = [
+    '#F8F9FA',
+    '#F1F3F5',
+    '#E9ECEF',
+    '#DEE2E6',
+    '#E3F2FD',
+    '#E8F5E9',
+    '#FFF3E0',
+    '#F3E5F5',
+    '#E0F7FA',
+    '#F1F8E9',
+    '#FFF8E1',
+    '#FCE4EC',
+    '#F3E5F5',
+    '#E8EAF6',
+    '#E0F2F1'
   ];
 
   let currentFontIndex = 0;
   let currentColorIndex = 0;
+  let currentBgIndex = 0;
 
   function handleClick() {
     currentFontIndex = (currentFontIndex + 1) % fonts.length;
-    currentColorIndex = (currentColorIndex + 1) % colors.length;
+    currentColorIndex = (currentColorIndex + 1) % textColors.length;
+    currentBgIndex = (currentBgIndex + 1) % backgroundColors.length;
   }
 
   onMount(() => {
@@ -44,9 +80,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 </svelte:head>
 
-<main>
+<main style="background-color: {backgroundColors[currentBgIndex]}">
   <h1 
-    style="font-family: {fonts[currentFontIndex]}; color: {colors[currentColorIndex]};"
+    style="font-family: {fonts[currentFontIndex]}; color: {textColors[currentColorIndex]};"
     on:click={handleClick}
   >
     먀
@@ -63,7 +99,6 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: #f5f5f5;
   }
 
   main {
@@ -72,10 +107,11 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    transition: background-color 0.5s ease;
   }
 
   h1 {
-    font-size: 15vh;
+    font-size: 22vh;
     margin: 0;
     cursor: pointer;
     user-select: none;

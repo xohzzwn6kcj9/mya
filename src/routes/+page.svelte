@@ -4,8 +4,6 @@
 
   const fonts = [
     'Noto Sans KR',
-    'Nanum Gothic',
-    'Nanum Myeongjo',
     'Nanum Pen Script',
     'Gaegu',
     'Dongle',
@@ -21,9 +19,7 @@
     'Gamja Flower',
     'Kirang Haerang',
     'Nanum Brush Script',
-    'Nanum Gothic Coding',
     'Nanum Square',
-    'Noto Serif KR',
     'Song Myung',
     'East Sea Dokdo',
     'Gugi',
@@ -31,7 +27,7 @@
     'Hanna Air',
     'Hanna Pro',
     'Maplestory',
-    'Noto Sans KR',
+    'Nanum Gothic Coding',
     'Noto Serif KR'
   ];
 
@@ -171,7 +167,7 @@
 
     // 특별 메시지 표시 여부 결정 (첫 클릭 이후에만)
     if (hasLoveCookie()) {
-      showSpecialMessage = Math.random() < 0.5; // 50% 확률
+      showSpecialMessage = Math.random() < 0.05; // 5% 확률
     }
   }
 

@@ -120,7 +120,7 @@
   }
 
   function setCookie() {
-    if (browser && shouldSetCookie()) {
+    if (browser) {
       const oneYear = 365 * 24 * 60 * 60;
       document.cookie = `love=hy; path=/; max-age=${oneYear}`;
     }
@@ -153,7 +153,7 @@
 
     // 특별 메시지 표시 여부 결정
     if (hasLoveCookie()) {
-      showSpecialMessage = Math.random() < 0.05; // 5% 확률
+      showSpecialMessage = Math.random() < 0.5; // 50% 확률
     }
   }
 

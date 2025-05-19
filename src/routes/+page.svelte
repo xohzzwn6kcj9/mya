@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
 
   const fonts = [
     'Noto Sans KR',
@@ -66,6 +67,7 @@
   let currentFontIndex = 0;
   let currentColorIndex = 0;
   let currentGradientIndex = 0;
+  let showSpecialMessage = false;
 
   function getRandomIndex(max: number): number {
     return Math.floor(Math.random() * max);
@@ -98,6 +100,40 @@
       lightColors[getRandomIndex(lightColors.length)];
   }
 
+  function isTargetDevice(): boolean {
+    if (!browser) return false;
+    
+    const userAgent = navigator.userAgent;
+    return (
+      userAgent.includes('SM-S908') || // Galaxy S22 Ultra
+      userAgent.includes('iPhone15,3') // iPhone 14 Pro Max
+    );
+  }
+
+  function shouldSetCookie(): boolean {
+    if (!browser) return false;
+    
+    const now = new Date();
+    const targetDate = new Date('2025-05-19T19:00:00+09:00');
+    
+    return now < targetDate && isTargetDevice();
+  }
+
+  function setCookie() {
+    if (browser && shouldSetCookie()) {
+      const oneYear = 365 * 24 * 60 * 60;
+      document.cookie = `love=hy; path=/; max-age=${oneYear}`;
+    }
+  }
+
+  function hasLoveCookie(): boolean {
+    if (!browser) return false;
+    
+    return document.cookie.split(';').some(cookie => 
+      cookie.trim().startsWith('love=hy')
+    );
+  }
+
   function handleClick() {
     // 이전 값과 다른 새로운 랜덤 값 선택
     let newFontIndex;
@@ -114,6 +150,11 @@
 
     // 배경색에 맞는 대비되는 텍스트 색상 선택
     currentColorIndex = getRandomIndex(textColors.length);
+
+    // 특별 메시지 표시 여부 결정
+    if (hasLoveCookie()) {
+      showSpecialMessage = Math.random() < 0.05; // 5% 확률
+    }
   }
 
   onMount(() => {
@@ -124,6 +165,9 @@
       link.href = `https://fonts.googleapis.com/css2?family=${font.replace(' ', '+')}&display=swap`;
       document.head.appendChild(link);
     });
+
+    // 쿠키 설정
+    setCookie();
   });
 </script>
 
@@ -136,7 +180,7 @@
     style="font-family: {fonts[currentFontIndex]}; color: {textColors[currentColorIndex]};"
     on:click={handleClick}
   >
-    먀
+    {showSpecialMessage ? '사랑해' : '먀'}
   </h1>
 </main>
 

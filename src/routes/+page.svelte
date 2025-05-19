@@ -128,10 +128,10 @@
   }
 
   function setCookie() {
-    if (browser) {
-      const oneYear = 365 * 24 * 60 * 60;
-      document.cookie = `love=hy; path=/; max-age=${oneYear}`;
-    }
+    // if (browser) {
+    //   const oneYear = 365 * 24 * 60 * 60;
+    //   document.cookie = `love=hy; path=/; max-age=${oneYear}`;
+    // }
   }
 
   function hasLoveCookie(): boolean {
@@ -181,7 +181,7 @@
     });
 
     // 쿠키 설정
-    setCookie();
+    // setCookie();
   });
 </script>
 

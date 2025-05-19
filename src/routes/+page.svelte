@@ -64,9 +64,21 @@
     'radial-gradient(circle, #FFFFF0, #F0FFFF)'
   ];
 
+  const animations = [
+    'bounce',
+    'pulse',
+    'shake',
+    'rotate',
+    'scale',
+    'fade',
+    'slide',
+    'wiggle'
+  ];
+
   let currentFontIndex = getRandomIndex(fonts.length);
   let currentColorIndex = getRandomIndex(textColors.length);
   let currentGradientIndex = getRandomIndex(gradients.length);
+  let currentAnimationIndex = getRandomIndex(animations.length);
   let showSpecialMessage = false;
 
   function getRandomIndex(max: number): number {
@@ -148,6 +160,12 @@
     } while (newGradientIndex === currentGradientIndex);
     currentGradientIndex = newGradientIndex;
 
+    let newAnimationIndex;
+    do {
+      newAnimationIndex = getRandomIndex(animations.length);
+    } while (newAnimationIndex === currentAnimationIndex);
+    currentAnimationIndex = newAnimationIndex;
+
     // 배경색에 맞는 대비되는 텍스트 색상 선택
     currentColorIndex = getRandomIndex(textColors.length);
 
@@ -178,6 +196,7 @@
 <main style="background: {gradients[currentGradientIndex]}">
   <h1 
     style="font-family: {fonts[currentFontIndex]}; color: {textColors[currentColorIndex]}; font-size: {showSpecialMessage ? '15vh' : '30vh'};"
+    class={animations[currentAnimationIndex]}
     on:click={handleClick}
   >
     {showSpecialMessage ? '사랑해' : '먀'}
@@ -219,7 +238,61 @@
     transform: translateX(-50%);
   }
 
+  /* 애니메이션 효과 */
+  @keyframes bounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-20px); }
+  }
+
+  @keyframes pulse {
+    0% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.1); }
+    100% { transform: translateX(-50%) scale(1); }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(-50%); }
+    25% { transform: translateX(calc(-50% - 10px)); }
+    75% { transform: translateX(calc(-50% + 10px)); }
+  }
+
+  @keyframes rotate {
+    0% { transform: translateX(-50%) rotate(0deg); }
+    100% { transform: translateX(-50%) rotate(360deg); }
+  }
+
+  @keyframes scale {
+    0% { transform: translateX(-50%) scale(0.8); }
+    50% { transform: translateX(-50%) scale(1.2); }
+    100% { transform: translateX(-50%) scale(0.8); }
+  }
+
+  @keyframes fade {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  @keyframes slide {
+    0% { transform: translateX(-50%) translateX(-20px); }
+    100% { transform: translateX(-50%) translateX(20px); }
+  }
+
+  @keyframes wiggle {
+    0%, 100% { transform: translateX(-50%) rotate(0deg); }
+    25% { transform: translateX(-50%) rotate(-5deg); }
+    75% { transform: translateX(-50%) rotate(5deg); }
+  }
+
+  .bounce { animation: bounce 1s infinite; }
+  .pulse { animation: pulse 1s infinite; }
+  .shake { animation: shake 0.5s infinite; }
+  .rotate { animation: rotate 2s infinite linear; }
+  .scale { animation: scale 1s infinite; }
+  .fade { animation: fade 1s infinite; }
+  .slide { animation: slide 1s infinite alternate; }
+  .wiggle { animation: wiggle 0.5s infinite; }
+
   h1:active {
-    transform: scale(0.95);
+    transform: translateX(-50%) scale(0.95);
   }
 </style>

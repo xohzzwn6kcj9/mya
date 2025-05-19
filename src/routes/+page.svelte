@@ -128,10 +128,10 @@
   }
 
   function setCookie() {
-    if (browser) {
-      const oneYear = 365 * 24 * 60 * 60;
-      document.cookie = `love=hy; path=/; max-age=${oneYear}`;
-    }
+    // if (browser) {
+    //   const oneYear = 365 * 24 * 60 * 60;
+    //   document.cookie = `love=hy; path=/; max-age=${oneYear}`;
+    // }
   }
 
   function hasLoveCookie(): boolean {
@@ -181,12 +181,20 @@
     });
 
     // 쿠키 설정
-    setCookie();
+    // setCookie();
   });
 </script>
 
 <svelte:head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta property="og:title" content="먀">
+  <meta property="og:description" content="특별한 메시지를 확인해보세요">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://xohzzwn6kcj9.github.io/mya/">
+  <meta property="og:image" content="https://xohzzwn6kcj9.github.io/mya/static/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <title>먀</title>
 </svelte:head>
 
 <main style="background: {gradients[currentGradientIndex]}">

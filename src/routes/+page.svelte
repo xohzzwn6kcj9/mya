@@ -177,7 +177,7 @@
 
 <main style="background: {gradients[currentGradientIndex]}">
   <h1 
-    style="font-family: {fonts[currentFontIndex]}; color: {textColors[currentColorIndex]}; font-size: {showSpecialMessage ? '20vh' : '33vh'};"
+    style="font-family: {fonts[currentFontIndex]}; color: {textColors[currentColorIndex]}; font-size: {showSpecialMessage ? '18vh' : '33vh'};"
     on:click={handleClick}
   >
     {showSpecialMessage ? '사랑해' : '먀'}

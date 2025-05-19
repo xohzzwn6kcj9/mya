@@ -177,7 +177,7 @@
 
 <main style="background: {gradients[currentGradientIndex]}">
   <h1 
-    style="font-family: {fonts[currentFontIndex]}; color: {textColors[currentColorIndex]};"
+    style="font-family: {fonts[currentFontIndex]}; color: {textColors[currentColorIndex]}; font-size: {showSpecialMessage ? '20vh' : '33vh'};"
     on:click={handleClick}
   >
     {showSpecialMessage ? '사랑해' : '먀'}
@@ -206,7 +206,6 @@
   }
 
   h1 {
-    font-size: 33vh;
     margin: 0;
     cursor: pointer;
     user-select: none;
@@ -215,8 +214,6 @@
     white-space: nowrap;
     width: 80%;
     text-align: center;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   h1:active {

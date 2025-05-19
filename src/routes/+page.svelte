@@ -192,7 +192,10 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://xohzzwn6kcj9.github.io/mya/">
   <meta property="og:image" content="https://xohzzwn6kcj9.github.io/mya/static/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://xohzzwn6kcj9.github.io/mya/static/og-image.png">
   <link rel="icon" type="image/png" href="/static/favicon.png">
   <title>먀</title>
 </svelte:head>

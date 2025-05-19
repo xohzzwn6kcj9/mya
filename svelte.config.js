@@ -21,6 +21,20 @@ const config = {
 		paths: {
 			base: process.env.NODE_ENV === 'production' ? '/mya' : ''
 		}
+	},
+	vitePlugin: {
+		build: {
+			minify: 'terser',
+			terserOptions: {
+				compress: {
+					drop_console: true,
+					drop_debugger: true
+				},
+				format: {
+					comments: false
+				}
+			}
+		}
 	}
 };
 

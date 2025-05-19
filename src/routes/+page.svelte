@@ -4,7 +4,11 @@
 
   const fonts = [
     'Noto Sans KR',
+    'Noto Serif KR',
     'Nanum Pen Script',
+    'Nanum Brush Script',
+    'Nanum Square',
+    'Nanum Gothic Coding',
     'Gaegu',
     'Dongle',
     'Black Han Sans',
@@ -18,17 +22,13 @@
     'Hi Melody',
     'Gamja Flower',
     'Kirang Haerang',
-    'Nanum Brush Script',
-    'Nanum Square',
     'Song Myung',
     'East Sea Dokdo',
     'Gugi',
     'Hanna',
     'Hanna Air',
     'Hanna Pro',
-    'Maplestory',
-    'Nanum Gothic Coding',
-    'Noto Serif KR'
+    'Maplestory'
   ];
 
   const textColors = [

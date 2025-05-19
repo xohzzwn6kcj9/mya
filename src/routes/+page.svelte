@@ -212,6 +212,11 @@
     user-select: none;
     transition: all 0.2s ease;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+    width: 80%;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   h1:active {

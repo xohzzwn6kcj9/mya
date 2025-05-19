@@ -64,9 +64,9 @@
     'radial-gradient(circle, #FFFFF0, #F0FFFF)'
   ];
 
-  let currentFontIndex = 0;
-  let currentColorIndex = 0;
-  let currentGradientIndex = 0;
+  let currentFontIndex = getRandomIndex(fonts.length);
+  let currentColorIndex = getRandomIndex(textColors.length);
+  let currentGradientIndex = getRandomIndex(gradients.length);
   let showSpecialMessage = false;
 
   function getRandomIndex(max: number): number {
@@ -151,7 +151,7 @@
     // 배경색에 맞는 대비되는 텍스트 색상 선택
     currentColorIndex = getRandomIndex(textColors.length);
 
-    // 특별 메시지 표시 여부 결정
+    // 특별 메시지 표시 여부 결정 (첫 클릭 이후에만)
     if (hasLoveCookie()) {
       showSpecialMessage = Math.random() < 0.5; // 50% 확률
     }

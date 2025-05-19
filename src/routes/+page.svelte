@@ -46,21 +46,21 @@
   ];
 
   const gradients = [
-    'linear-gradient(45deg, #FF6B6B, #4ECDC4)',
-    'linear-gradient(45deg, #A8E6CF, #DCEDC1)',
-    'linear-gradient(45deg, #FFD3B6, #FFAAA5)',
-    'linear-gradient(45deg, #FF8B94, #FFAAA5)',
-    'linear-gradient(45deg, #FFD3B6, #FFE66D)',
-    'linear-gradient(45deg, #B5EAD7, #C7CEEA)',
-    'linear-gradient(45deg, #E2F0CB, #B5EAD7)',
-    'linear-gradient(45deg, #C7CEEA, #E2F0CB)',
-    'linear-gradient(45deg, #FFDAC1, #E2F0CB)',
-    'linear-gradient(45deg, #B5EAD7, #C7CEEA)',
-    'radial-gradient(circle, #FF6B6B, #4ECDC4)',
-    'radial-gradient(circle, #A8E6CF, #DCEDC1)',
-    'radial-gradient(circle, #FFD3B6, #FFAAA5)',
-    'radial-gradient(circle, #FF8B94, #FFAAA5)',
-    'radial-gradient(circle, #FFD3B6, #FFE66D)'
+    'linear-gradient(45deg, #FFE5E5, #E5F5F5)',
+    'linear-gradient(45deg, #F0FFF0, #F5F5F0)',
+    'linear-gradient(45deg, #FFF0F0, #F0F0FF)',
+    'linear-gradient(45deg, #F5F5FF, #FFF5F5)',
+    'linear-gradient(45deg, #FFFFF0, #F0FFFF)',
+    'linear-gradient(45deg, #F0F5FF, #FFF0F5)',
+    'linear-gradient(45deg, #FFF5F0, #F0FFF5)',
+    'linear-gradient(45deg, #F5FFF0, #FFF0F0)',
+    'linear-gradient(45deg, #F0F0F5, #FFF5F0)',
+    'linear-gradient(45deg, #FFF0F0, #F0F5FF)',
+    'radial-gradient(circle, #FFE5E5, #E5F5F5)',
+    'radial-gradient(circle, #F0FFF0, #F5F5F0)',
+    'radial-gradient(circle, #FFF0F0, #F0F0FF)',
+    'radial-gradient(circle, #F5F5FF, #FFF5F5)',
+    'radial-gradient(circle, #FFFFF0, #F0FFFF)'
   ];
 
   let currentFontIndex = 0;
@@ -71,6 +71,33 @@
     return Math.floor(Math.random() * max);
   }
 
+  function getContrastColor(backgroundColor: string): string {
+    // 배경색의 밝기를 계산
+    const rgb = backgroundColor.match(/\d+/g);
+    if (!rgb) return textColors[0];
+    
+    const brightness = (parseInt(rgb[0]) * 299 + parseInt(rgb[1]) * 587 + parseInt(rgb[2]) * 114) / 1000;
+    
+    // 밝은 배경에는 어두운 색상, 어두운 배경에는 밝은 색상 선택
+    const darkColors = textColors.filter(color => {
+      const colorRgb = color.match(/\d+/g);
+      if (!colorRgb) return false;
+      const colorBrightness = (parseInt(colorRgb[0]) * 299 + parseInt(colorRgb[1]) * 587 + parseInt(colorRgb[2]) * 114) / 1000;
+      return colorBrightness < 128;
+    });
+    
+    const lightColors = textColors.filter(color => {
+      const colorRgb = color.match(/\d+/g);
+      if (!colorRgb) return false;
+      const colorBrightness = (parseInt(colorRgb[0]) * 299 + parseInt(colorRgb[1]) * 587 + parseInt(colorRgb[2]) * 114) / 1000;
+      return colorBrightness >= 128;
+    });
+
+    return brightness >= 128 ? 
+      darkColors[getRandomIndex(darkColors.length)] : 
+      lightColors[getRandomIndex(lightColors.length)];
+  }
+
   function handleClick() {
     // 이전 값과 다른 새로운 랜덤 값 선택
     let newFontIndex;
@@ -79,17 +106,14 @@
     } while (newFontIndex === currentFontIndex);
     currentFontIndex = newFontIndex;
 
-    let newColorIndex;
-    do {
-      newColorIndex = getRandomIndex(textColors.length);
-    } while (newColorIndex === currentColorIndex);
-    currentColorIndex = newColorIndex;
-
     let newGradientIndex;
     do {
       newGradientIndex = getRandomIndex(gradients.length);
     } while (newGradientIndex === currentGradientIndex);
     currentGradientIndex = newGradientIndex;
+
+    // 배경색에 맞는 대비되는 텍스트 색상 선택
+    currentColorIndex = getRandomIndex(textColors.length);
   }
 
   onMount(() => {
@@ -134,7 +158,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: background 0.5s ease;
+    transition: background 0.2s ease;
   }
 
   h1 {
@@ -142,7 +166,7 @@
     margin: 0;
     cursor: pointer;
     user-select: none;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
   }
 

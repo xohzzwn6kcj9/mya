@@ -236,6 +236,7 @@
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
+    transform-origin: center center;
   }
 
   /* 애니메이션 효과 */
@@ -273,8 +274,8 @@
   }
 
   @keyframes slide {
-    0% { transform: translateX(-50%) translateX(-20px); }
-    100% { transform: translateX(-50%) translateX(20px); }
+    0% { transform: translateX(calc(-50% - 20px)); }
+    100% { transform: translateX(calc(-50% + 20px)); }
   }
 
   @keyframes wiggle {

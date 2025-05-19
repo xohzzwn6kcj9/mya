@@ -16,53 +16,80 @@
     'Sunflower',
     'Yeon Sung',
     'Single Day',
-    'Hi Melody'
+    'Hi Melody',
+    'Gamja Flower',
+    'Kirang Haerang',
+    'Nanum Brush Script',
+    'Nanum Gothic Coding',
+    'Nanum Square',
+    'Noto Serif KR',
+    'Song Myung',
+    'East Sea Dokdo',
+    'Gugi',
+    'Hanna',
+    'Hanna Air',
+    'Hanna Pro',
+    'Maplestory',
+    'Noto Sans KR',
+    'Noto Serif KR'
   ];
 
   const textColors = [
-    '#FF6B6B',
-    '#4ECDC4',
-    '#45B7D1',
-    '#96CEB4',
-    '#FFEEAD',
-    '#D4A5A5',
-    '#9B59B6',
-    '#3498DB',
-    '#E74C3C',
-    '#2ECC71',
-    '#F1C40F',
-    '#1ABC9C',
-    '#E67E22',
-    '#34495E',
-    '#16A085'
+    '#FF0000', '#FF4500', '#FF8C00', '#FFA500', '#FFD700',
+    '#00FF00', '#32CD32', '#7FFF00', '#ADFF2F', '#9ACD32',
+    '#0000FF', '#1E90FF', '#00BFFF', '#87CEEB', '#00CED1',
+    '#FF00FF', '#FF1493', '#FF69B4', '#FFB6C1', '#FFC0CB',
+    '#800080', '#4B0082', '#8A2BE2', '#9400D3', '#9932CC',
+    '#FFD700', '#FFA500', '#FF8C00', '#FF4500', '#FF6347',
+    '#00FF7F', '#3CB371', '#2E8B57', '#20B2AA', '#48D1CC',
+    '#FF1493', '#FF69B4', '#FFB6C1', '#FFC0CB', '#FF69B4'
   ];
 
-  const backgroundColors = [
-    '#F8F9FA',
-    '#F1F3F5',
-    '#E9ECEF',
-    '#DEE2E6',
-    '#E3F2FD',
-    '#E8F5E9',
-    '#FFF3E0',
-    '#F3E5F5',
-    '#E0F7FA',
-    '#F1F8E9',
-    '#FFF8E1',
-    '#FCE4EC',
-    '#F3E5F5',
-    '#E8EAF6',
-    '#E0F2F1'
+  const gradients = [
+    'linear-gradient(45deg, #FF6B6B, #4ECDC4)',
+    'linear-gradient(45deg, #A8E6CF, #DCEDC1)',
+    'linear-gradient(45deg, #FFD3B6, #FFAAA5)',
+    'linear-gradient(45deg, #FF8B94, #FFAAA5)',
+    'linear-gradient(45deg, #FFD3B6, #FFE66D)',
+    'linear-gradient(45deg, #B5EAD7, #C7CEEA)',
+    'linear-gradient(45deg, #E2F0CB, #B5EAD7)',
+    'linear-gradient(45deg, #C7CEEA, #E2F0CB)',
+    'linear-gradient(45deg, #FFDAC1, #E2F0CB)',
+    'linear-gradient(45deg, #B5EAD7, #C7CEEA)',
+    'radial-gradient(circle, #FF6B6B, #4ECDC4)',
+    'radial-gradient(circle, #A8E6CF, #DCEDC1)',
+    'radial-gradient(circle, #FFD3B6, #FFAAA5)',
+    'radial-gradient(circle, #FF8B94, #FFAAA5)',
+    'radial-gradient(circle, #FFD3B6, #FFE66D)'
   ];
 
   let currentFontIndex = 0;
   let currentColorIndex = 0;
-  let currentBgIndex = 0;
+  let currentGradientIndex = 0;
+
+  function getRandomIndex(max: number): number {
+    return Math.floor(Math.random() * max);
+  }
 
   function handleClick() {
-    currentFontIndex = (currentFontIndex + 1) % fonts.length;
-    currentColorIndex = (currentColorIndex + 1) % textColors.length;
-    currentBgIndex = (currentBgIndex + 1) % backgroundColors.length;
+    // 이전 값과 다른 새로운 랜덤 값 선택
+    let newFontIndex;
+    do {
+      newFontIndex = getRandomIndex(fonts.length);
+    } while (newFontIndex === currentFontIndex);
+    currentFontIndex = newFontIndex;
+
+    let newColorIndex;
+    do {
+      newColorIndex = getRandomIndex(textColors.length);
+    } while (newColorIndex === currentColorIndex);
+    currentColorIndex = newColorIndex;
+
+    let newGradientIndex;
+    do {
+      newGradientIndex = getRandomIndex(gradients.length);
+    } while (newGradientIndex === currentGradientIndex);
+    currentGradientIndex = newGradientIndex;
   }
 
   onMount(() => {
@@ -80,7 +107,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 </svelte:head>
 
-<main style="background-color: {backgroundColors[currentBgIndex]}">
+<main style="background: {gradients[currentGradientIndex]}">
   <h1 
     style="font-family: {fonts[currentFontIndex]}; color: {textColors[currentColorIndex]};"
     on:click={handleClick}
@@ -107,15 +134,16 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: background-color 0.5s ease;
+    transition: background 0.5s ease;
   }
 
   h1 {
-    font-size: 22vh;
+    font-size: 33vh;
     margin: 0;
     cursor: pointer;
     user-select: none;
     transition: all 0.3s ease;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   h1:active {

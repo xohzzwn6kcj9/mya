@@ -38,23 +38,4 @@ const config = {
 	}
 };
 
-// static 폴더를 build 폴더로 복사
-import { copyFileSync, mkdirSync } from 'fs';
-import { join } from 'path';
-
-const copyStaticFiles = () => {
-	const staticDir = 'static';
-	const buildDir = 'build/static';
-	
-	try {
-		mkdirSync(buildDir, { recursive: true });
-		copyFileSync(join(staticDir, 'og-image.png'), join(buildDir, 'og-image.png'));
-		copyFileSync(join(staticDir, 'favicon.png'), join(buildDir, 'favicon.png'));
-	} catch (error) {
-		console.error('Error copying static files:', error);
-	}
-};
-
-copyStaticFiles();
-
 export default config;

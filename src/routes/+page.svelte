@@ -4,12 +4,10 @@
   import { page } from '$app/stores';
 
   const fonts = [
-    'Noto Sans KR',
     'Noto Serif KR',
     'Nanum Pen Script',
     'Nanum Brush Script',
     'Nanum Square',
-    'Nanum Gothic Coding',
     'Gaegu',
     'Dongle',
     'Black Han Sans',
@@ -20,6 +18,9 @@
     'Sunflower',
     'Yeon Sung',
     'Single Day',
+    'Single Day',
+    'Single Day',
+    'Single Day',
     'Hi Melody',
     'Gamja Flower',
     'Kirang Haerang',
@@ -29,7 +30,10 @@
     'Hanna',
     'Hanna Air',
     'Hanna Pro',
-    'Maplestory'
+    'Maplestory',
+    'Grandiflora',
+    'Orbit',
+    'Diphylleia'
   ];
 
   const textColors = [

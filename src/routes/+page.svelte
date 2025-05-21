@@ -69,7 +69,6 @@
     'bounce',
     'pulse',
     'shake',
-    'rotate',
     'scale',
     'fade',
     'slide',
@@ -258,11 +257,6 @@
     75% { transform: translateX(calc(-50% + 10px)); }
   }
 
-  @keyframes rotate {
-    0% { transform: translateX(-50%) rotate(0deg); }
-    100% { transform: translateX(-50%) rotate(360deg); }
-  }
-
   @keyframes scale {
     0% { transform: translateX(-50%) scale(0.8); }
     50% { transform: translateX(-50%) scale(1.2); }
@@ -288,7 +282,6 @@
   .bounce { animation: bounce 1s infinite; }
   .pulse { animation: pulse 1s infinite; }
   .shake { animation: shake 0.5s infinite; }
-  .rotate { animation: rotate 2s infinite linear; }
   .scale { animation: scale 1s infinite; }
   .fade { animation: fade 1s infinite; }
   .slide { animation: slide 1s infinite alternate; }

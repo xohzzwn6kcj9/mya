@@ -148,9 +148,13 @@
   function handleClick() {
     // 이전 값과 다른 새로운 랜덤 값 선택
     let newFontIndex;
-    do {
-      newFontIndex = getRandomIndex(fonts.length);
-    } while (newFontIndex === currentFontIndex);
+    if (Math.random() < 0.3) { // 30% 확률로 Single Day 선택
+      newFontIndex = fonts.indexOf('Single Day');
+    } else {
+      do {
+        newFontIndex = getRandomIndex(fonts.length);
+      } while (newFontIndex === currentFontIndex);
+    }
     currentFontIndex = newFontIndex;
 
     let newGradientIndex;

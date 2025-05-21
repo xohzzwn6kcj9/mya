@@ -77,6 +77,7 @@
   let currentGradientIndex = getRandomIndex(gradients.length);
   let currentAnimationIndex = getRandomIndex(animations.length);
   let showSpecialMessage = false;
+  let showExclamation = false;
 
   function getRandomIndex(max: number): number {
     return Math.floor(Math.random() * max);
@@ -168,8 +169,11 @@
 
     // 특별 메시지 표시 여부 결정 (첫 클릭 이후에만)
     if (hasLoveCookie()) {
-      showSpecialMessage = Math.random() < 0.05; // 5% 확률
+      showSpecialMessage = Math.random() < 0.1; // 10% 확률
     }
+    
+    // 느낌표 표시 여부 결정
+    showExclamation = Math.random() < 0.3; // 30% 확률
   }
 
   onMount(() => {
@@ -192,7 +196,7 @@
     class={animations[currentAnimationIndex]}
     on:click={handleClick}
   >
-    {showSpecialMessage ? '사랑해' : '먀'}
+    {showSpecialMessage ? '사랑해' : '먀'}{showExclamation ? '!' : ''}
   </h1>
 </main>
 

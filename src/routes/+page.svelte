@@ -195,11 +195,13 @@
   });
 </script>
 
-<main style="background: {gradients[currentGradientIndex]}">
+<main 
+  style="background: {gradients[currentGradientIndex]}"
+  on:click={handleClick}
+>
   <h1 
     style="font-family: {fonts[currentFontIndex]}; color: {textColors[currentColorIndex]}; font-size: {showSpecialMessage ? '15vh' : '30vh'};"
     class={animations[currentAnimationIndex]}
-    on:click={handleClick}
   >
     {showSpecialMessage ? '사랑해' : '먀'}{showExclamation ? '!' : ''}
   </h1>
@@ -224,11 +226,11 @@
     justify-content: center;
     align-items: center;
     transition: background 0.2s ease;
+    cursor: pointer;
   }
 
   h1 {
     margin: 0;
-    cursor: pointer;
     user-select: none;
     transition: all 0.2s ease;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);

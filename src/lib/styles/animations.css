@@ -1,0 +1,46 @@
+@keyframes bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-20px); }
+}
+
+@keyframes pulse {
+  0% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.1); }
+  100% { transform: translateX(-50%) scale(1); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(-50%); }
+  25% { transform: translateX(calc(-50% - 10px)); }
+  75% { transform: translateX(calc(-50% + 10px)); }
+}
+
+@keyframes scale {
+  0% { transform: translateX(-50%) scale(0.8); }
+  50% { transform: translateX(-50%) scale(1.2); }
+  100% { transform: translateX(-50%) scale(0.8); }
+}
+
+@keyframes fade {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes slide {
+  0% { transform: translateX(calc(-50% - 20px)); }
+  100% { transform: translateX(calc(-50% + 20px)); }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: translateX(-50%) rotate(0deg); }
+  25% { transform: translateX(-50%) rotate(-5deg); }
+  75% { transform: translateX(-50%) rotate(5deg); }
+}
+
+.bounce { animation: bounce 1s infinite; }
+.pulse { animation: pulse 1s infinite; }
+.shake { animation: shake 0.5s infinite; }
+.scale { animation: scale 1s infinite; }
+.fade { animation: fade 1s infinite; }
+.slide { animation: slide 1s infinite alternate; }
+.wiggle { animation: wiggle 0.5s infinite; } 

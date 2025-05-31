@@ -1,77 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { browser } from '$app/environment';
-  import { page } from '$app/stores';
-
-  const fonts = [
-    'Noto Serif KR',
-    'Nanum Pen Script',
-    'Nanum Brush Script',
-    'Nanum Square',
-    'Gaegu',
-    'Dongle',
-    'Black Han Sans',
-    'Do Hyeon',
-    'Jua',
-    'Poor Story',
-    'Stylish',
-    'Sunflower',
-    'Yeon Sung',
-    'Single Day',
-    'Single Day',
-    'Single Day',
-    'Single Day',
-    'Hi Melody',
-    'Gamja Flower',
-    'Kirang Haerang',
-    'Song Myung',
-    'East Sea Dokdo',
-    'Gugi',
-    'Hanna',
-    'Hanna Air',
-    'Hanna Pro',
-    'Maplestory',
-    'Grandiflora',
-    'Orbit',
-    'Diphylleia'
-  ];
-
-  const textColors = [
-    '#FF0000', '#FF4500', '#FF8C00', '#FFA500', '#FFD700',
-    '#00FF00', '#32CD32', '#7FFF00', '#ADFF2F', '#9ACD32',
-    '#0000FF', '#1E90FF', '#00BFFF', '#87CEEB', '#00CED1',
-    '#FF00FF', '#FF1493', '#FF69B4',
-    '#800080', '#4B0082', '#8A2BE2', '#9400D3', '#9932CC',
-    '#FF6347', '#00FF7F', '#3CB371', '#2E8B57', '#20B2AA', '#48D1CC'
-  ];
-
-  const gradients = [
-    'linear-gradient(45deg, #FFE5E5, #E5F5F5)',
-    'linear-gradient(45deg, #F0FFF0, #F5F5F0)',
-    'linear-gradient(45deg, #FFF0F0, #F0F0FF)',
-    'linear-gradient(45deg, #F5F5FF, #FFF5F5)',
-    'linear-gradient(45deg, #FFFFF0, #F0FFFF)',
-    'linear-gradient(45deg, #F0F5FF, #FFF0F5)',
-    'linear-gradient(45deg, #FFF5F0, #F0FFF5)',
-    'linear-gradient(45deg, #F5FFF0, #FFF0F0)',
-    'linear-gradient(45deg, #F0F0F5, #FFF5F0)',
-    'linear-gradient(45deg, #FFF0F0, #F0F5FF)',
-    'radial-gradient(circle, #FFE5E5, #E5F5F5)',
-    'radial-gradient(circle, #F0FFF0, #F5F5F0)',
-    'radial-gradient(circle, #FFF0F0, #F0F0FF)',
-    'radial-gradient(circle, #F5F5FF, #FFF5F5)',
-    'radial-gradient(circle, #FFFFF0, #F0FFFF)'
-  ];
-
-  const animations = [
-    'bounce',
-    'pulse',
-    'shake',
-    'scale',
-    'fade',
-    'slide',
-    'wiggle'
-  ];
+  import { fonts, textColors, gradients, animations } from '$lib/config/displayOptions';
+  import { getRandomIndex, getContrastColor } from '$lib/utils/styleUtils';
+  import { isTargetDevice, shouldSetCookie, setCookie, hasLoveCookie } from '$lib/utils/userContextUtils';
+  import { SPECIAL_MESSAGE_PROBABILITY, EXCLAMATION_PROBABILITY, SINGLE_DAY_FONT_PROBABILITY, TARGET_DATE } from '$lib/constants';
+  import '$lib/styles/animations.css';
 
   let currentFontIndex = getRandomIndex(fonts.length);
   let currentColorIndex = getRandomIndex(textColors.length);
@@ -80,75 +13,10 @@
   let showSpecialMessage = false;
   let showExclamation = false;
 
-  function getRandomIndex(max: number): number {
-    return Math.floor(Math.random() * max);
-  }
-
-  function getContrastColor(backgroundColor: string): string {
-    // 배경색의 밝기를 계산
-    const rgb = backgroundColor.match(/\d+/g);
-    if (!rgb) return textColors[0];
-    
-    const brightness = (parseInt(rgb[0]) * 299 + parseInt(rgb[1]) * 587 + parseInt(rgb[2]) * 114) / 1000;
-    
-    // 밝은 배경에는 어두운 색상, 어두운 배경에는 밝은 색상 선택
-    const darkColors = textColors.filter(color => {
-      const colorRgb = color.match(/\d+/g);
-      if (!colorRgb) return false;
-      const colorBrightness = (parseInt(colorRgb[0]) * 299 + parseInt(colorRgb[1]) * 587 + parseInt(colorRgb[2]) * 114) / 1000;
-      return colorBrightness < 128;
-    });
-    
-    const lightColors = textColors.filter(color => {
-      const colorRgb = color.match(/\d+/g);
-      if (!colorRgb) return false;
-      const colorBrightness = (parseInt(colorRgb[0]) * 299 + parseInt(colorRgb[1]) * 587 + parseInt(colorRgb[2]) * 114) / 1000;
-      return colorBrightness >= 128;
-    });
-
-    return brightness >= 128 ? 
-      darkColors[getRandomIndex(darkColors.length)] : 
-      lightColors[getRandomIndex(lightColors.length)];
-  }
-
-  function isTargetDevice(): boolean {
-    if (!browser) return false;
-    
-    const userAgent = navigator.userAgent;
-    return (
-      userAgent.includes('SM-S908') || // Galaxy S22 Ultra
-      userAgent.includes('iPhone15,3') // iPhone 14 Pro Max
-    );
-  }
-
-  function shouldSetCookie(): boolean {
-    if (!browser) return false;
-    
-    const now = new Date();
-    const targetDate = new Date('2025-05-19T19:00:00+09:00');
-    
-    return now < targetDate && isTargetDevice();
-  }
-
-  function setCookie() {
-    // if (browser) {
-    //   const oneYear = 365 * 24 * 60 * 60;
-    //   document.cookie = `love=hy; path=/; max-age=${oneYear}`;
-    // }
-  }
-
-  function hasLoveCookie(): boolean {
-    if (!browser) return false;
-    
-    return document.cookie.split(';').some(cookie => 
-      cookie.trim().startsWith('love=hy')
-    );
-  }
-
   function handleClick() {
     // 이전 값과 다른 새로운 랜덤 값 선택
     let newFontIndex;
-    if (Math.random() < 0.3) { // 30% 확률로 Single Day 선택
+    if (Math.random() < SINGLE_DAY_FONT_PROBABILITY) { // 30% 확률로 Single Day 선택
       newFontIndex = fonts.indexOf('Single Day');
     } else {
       do {
@@ -174,11 +42,11 @@
 
     // 특별 메시지 표시 여부 결정 (첫 클릭 이후에만)
     if (hasLoveCookie()) {
-      showSpecialMessage = Math.random() < 0.1; // 10% 확률
+      showSpecialMessage = Math.random() < SPECIAL_MESSAGE_PROBABILITY;
     }
     
     // 느낌표 표시 여부 결정
-    showExclamation = Math.random() < 0.3; // 30% 확률
+    showExclamation = Math.random() < EXCLAMATION_PROBABILITY;
   }
 
   onMount(() => {
@@ -191,7 +59,9 @@
     });
 
     // 쿠키 설정
-    // setCookie();
+    if (shouldSetCookie()) {
+      setCookie();
+    }
   });
 </script>
 

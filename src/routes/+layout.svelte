@@ -13,7 +13,7 @@
 	<meta property="og:url" content="https://xohzzwn6kcj9.github.io/mya/" />
 	<meta property="og:image" content="https://xohzzwn6kcj9.github.io/mya/static/og-image.png" />
 	<meta property="og:image:width" content="1200" />
-	<meta property="og:image:height" content="630" />
+	<meta property="og:image:height" content="1200" />
 	<meta property="og:image:type" content="image/png" />
 	<meta property="og:site_name" content="먀" />
 	<meta property="og:locale" content="ko_KR" />

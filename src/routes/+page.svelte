@@ -13,6 +13,8 @@
   let currentFontSize = FONT_SIZE_DEFAULT;
   let showSpecialMessage = false;
   let showExclamation = false;
+  let positionX = 50;  // % 단위 (기본: 중앙)
+  let positionY = 50;  // % 단위 (기본: 중앙)
 
   function handleClick() {
     // 이전 값과 다른 새로운 랜덤 값 선택
@@ -42,8 +44,17 @@
     // 배경색에 맞는 대비되는 텍스트 색상 선택
     currentColorIndex = getRandomIndex(textColors.length);
 
-    // 폰트 크기 랜덤 변경
-    currentFontSize = Math.floor(Math.random() * (FONT_SIZE_MAX - FONT_SIZE_MIN + 1)) + FONT_SIZE_MIN;
+    // 랜덤 위치 (15% ~ 85%)
+    positionX = Math.random() * 70 + 15;
+    positionY = Math.random() * 70 + 15;
+
+    // 가장자리 거리에 따른 최대 폰트 크기 계산
+    const edgeDistance = Math.min(positionX, 100 - positionX, positionY, 100 - positionY);
+    const sizeMultiplier = edgeDistance / 50;  // 0~1 범위
+    const maxFontSize = FONT_SIZE_MIN + (FONT_SIZE_MAX - FONT_SIZE_MIN) * sizeMultiplier;
+
+    // 조정된 범위 내에서 랜덤 크기
+    currentFontSize = Math.floor(Math.random() * (maxFontSize - FONT_SIZE_MIN + 1)) + FONT_SIZE_MIN;
 
     // 특별 메시지 표시 여부 결정 (첫 클릭 이후에만)
     if (hasLoveCookie()) {
@@ -88,7 +99,7 @@
   on:click={handleClick}
 >
   <h1
-    style="font-family: {fonts[currentFontIndex]}; color: {textColors[currentColorIndex]}; font-size: {currentFontSize}vh;"
+    style="font-family: {fonts[currentFontIndex]}; color: {textColors[currentColorIndex]}; font-size: {currentFontSize}vh; left: {positionX}%; top: {positionY}%; transform: translate(-50%, -50%);"
     class={animations[currentAnimationIndex]}
   >
     {showSpecialMessage ? '사랑해' : '먀'}{showExclamation ? '!' : ''}
@@ -115,9 +126,7 @@
   main {
     width: 100%;
     height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    position: relative;
     transition: background 0.2s ease;
     cursor: pointer;
   }
@@ -128,16 +137,13 @@
     transition: all 0.2s ease;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
     white-space: nowrap;
-    width: 80%;
     text-align: center;
     position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
     transform-origin: center center;
   }
 
 
   h1:active {
-    transform: translateX(-50%) scale(0.95);
+    transform: translate(-50%, -50%) scale(0.95);
   }
 </style>

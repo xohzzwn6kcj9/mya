@@ -1,6 +1,7 @@
 export const SPECIAL_MESSAGE_PROBABILITY = 0.1;
 export const EXCLAMATION_PROBABILITY = 0.3;
 export const QUESTION_MARK_PROBABILITY = 0.3;
+export const MYU_PROBABILITY = 0.5;
 export const SINGLE_DAY_FONT_PROBABILITY = 0.3;
 export const COOKIE_EXPIRY_YEARS = 1;
 export const TARGET_DATE = '2025-05-19T19:00:00+09:00';

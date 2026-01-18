@@ -3,7 +3,7 @@
   import { fonts, textColors, gradients, animations } from '$lib/config/displayOptions';
   import { getRandomIndex } from '$lib/utils/styleUtils';
   import { isTargetDevice, shouldSetCookie, setCookie, hasLoveCookie } from '$lib/utils/userContextUtils';
-  import { SPECIAL_MESSAGE_PROBABILITY, EXCLAMATION_PROBABILITY, QUESTION_MARK_PROBABILITY, SINGLE_DAY_FONT_PROBABILITY, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from '$lib/constants';
+  import { SPECIAL_MESSAGE_PROBABILITY, EXCLAMATION_PROBABILITY, QUESTION_MARK_PROBABILITY, MYU_PROBABILITY, SINGLE_DAY_FONT_PROBABILITY, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from '$lib/constants';
   import '$lib/styles/animations.css';
 
   // 텍스트 아이템 타입
@@ -15,6 +15,7 @@
     positionX: number;
     positionY: number;
     showSpecialMessage: boolean;
+    showMyu: boolean;
     showExclamation: boolean;
     showQuestionMark: boolean;
   }
@@ -33,6 +34,7 @@
     positionX: 50,
     positionY: 50,
     showSpecialMessage: false,
+    showMyu: false,
     showExclamation: false,
     showQuestionMark: false
   }];
@@ -106,10 +108,12 @@
     // 색상 선택
     const colorIndex = getRandomIndex(textColors.length);
 
-    // 특별 메시지, 느낌표, 물음표 (위치 계산 전에 결정)
+    // 특별 메시지, 뮤, 느낌표, 물음표 (위치 계산 전에 결정)
     const showSpecialMessage = hasLoveCookie() && Math.random() < SPECIAL_MESSAGE_PROBABILITY;
+    // 뮤는 사랑해가 아닐 때만 적용
+    const showMyu = !showSpecialMessage && Math.random() < MYU_PROBABILITY;
     const showExclamation = Math.random() < EXCLAMATION_PROBABILITY;
-    // 물음표는 "먀"일 때만 적용
+    // 물음표는 사랑해가 아닐 때만 적용
     const showQuestionMark = !showSpecialMessage && Math.random() < QUESTION_MARK_PROBABILITY;
 
     // 최소 폰트 크기가 들어갈 수 있는 여유 확보
@@ -158,6 +162,7 @@
         positionX,
         positionY,
         showSpecialMessage,
+        showMyu,
         showExclamation,
         showQuestionMark
       };
@@ -238,7 +243,7 @@
       style="font-family: {fonts[item.fontIndex]}; color: {textColors[item.colorIndex]}; font-size: {item.fontSize}vh; left: {item.positionX}%; top: {item.positionY}%; transform: translate(-50%, -50%);"
       class={animations[item.animationIndex]}
     >
-      {item.showSpecialMessage ? '사랑해' : '먀'}{item.showExclamation ? '!' : ''}{item.showQuestionMark ? '?' : ''}
+      {item.showSpecialMessage ? '사랑해' : (item.showMyu ? '뮤' : '먀')}{item.showExclamation ? '!' : ''}{item.showQuestionMark ? '?' : ''}
     </h1>
   {/each}
 </main>

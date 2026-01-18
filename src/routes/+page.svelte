@@ -46,26 +46,40 @@
 
     // 애니메이션 여유 공간 (vh 단위): bounce 20px + scale 20% 고려
     const ANIMATION_MARGIN = 5;
+    // 텍스트 너비 = 높이 × 비율 (한글 4글자 "사랑해!" 기준)
+    const TEXT_WIDTH_RATIO = 2;
 
-    // 최소 폰트 크기가 들어갈 수 있는 여유 확보
-    const minMargin = FONT_SIZE_MIN / 2 + ANIMATION_MARGIN;
+    // 최소 폰트 크기가 들어갈 수 있는 여유 확보 (상하/좌우 분리)
+    const minMarginY = FONT_SIZE_MIN / 2 + ANIMATION_MARGIN;  // 상하: 높이 기준
+    const minMarginX = (FONT_SIZE_MIN * TEXT_WIDTH_RATIO) / 2 + ANIMATION_MARGIN;  // 좌우: 너비 기준
 
     // 랜덤 위치 선택 (최소 여유 공간 확보)
-    positionX = Math.random() * (100 - 2 * minMargin) + minMargin;
-    positionY = Math.random() * (100 - 2 * minMargin) + minMargin;
+    positionX = Math.random() * (100 - 2 * minMarginX) + minMarginX;
+    positionY = Math.random() * (100 - 2 * minMarginY) + minMarginY;
 
     // 해당 위치에서 화면을 벗어나지 않는 최대 폰트 크기 계산
     // (폰트 높이/너비의 절반 + 애니메이션 여유가 경계를 넘지 않아야 함)
     const maxFromTop = (positionY - ANIMATION_MARGIN) * 2;
     const maxFromBottom = (100 - positionY - ANIMATION_MARGIN) * 2;
-    const maxFromLeft = (positionX - ANIMATION_MARGIN) * 2;
-    const maxFromRight = (100 - positionX - ANIMATION_MARGIN) * 2;
+    const maxFromLeft = (positionX - ANIMATION_MARGIN) * 2 / TEXT_WIDTH_RATIO;
+    const maxFromRight = (100 - positionX - ANIMATION_MARGIN) * 2 / TEXT_WIDTH_RATIO;
+
+    // 화면 1/3 제한 (애니메이션 여유 포함)
+    // 높이 제한: fontSize + ANIMATION_MARGIN*2 ≤ 100/3
+    const maxByHeight = 100 / 3 - ANIMATION_MARGIN * 2;
+    // 너비 제한: (fontSize * TEXT_WIDTH_RATIO + ANIMATION_MARGIN*2) ≤ 화면너비의 1/3
+    // 화면 비율을 vh 단위로 변환하여 계산
+    const aspectRatio = window.innerWidth / window.innerHeight;
+    const screenWidthInVh = aspectRatio * 100;
+    const maxByWidth = (screenWidthInVh / 3 - ANIMATION_MARGIN * 2) / TEXT_WIDTH_RATIO;
 
     const maxFontSize = Math.min(
       maxFromTop,
       maxFromBottom,
       maxFromLeft,
       maxFromRight,
+      maxByHeight,
+      maxByWidth,
       FONT_SIZE_MAX
     );
 

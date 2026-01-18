@@ -76,5 +76,7 @@ export const animations = [
   'glow',
   'float',
   'heartbeat',
-  'breathe'
+  'breathe',
+  'tilt',
+  'nod'
 ]; 

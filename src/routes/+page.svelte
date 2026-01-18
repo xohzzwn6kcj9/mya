@@ -3,7 +3,7 @@
   import { fonts, textColors, gradients, animations } from '$lib/config/displayOptions';
   import { getRandomIndex } from '$lib/utils/styleUtils';
   import { isTargetDevice, shouldSetCookie, setCookie, hasLoveCookie } from '$lib/utils/userContextUtils';
-  import { SPECIAL_MESSAGE_PROBABILITY, EXCLAMATION_PROBABILITY, QUESTION_MARK_PROBABILITY, MYU_PROBABILITY, SINGLE_DAY_FONT_PROBABILITY, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from '$lib/constants';
+  import { SPECIAL_MESSAGE_PROBABILITY, EXCLAMATION_PROBABILITY, QUESTION_MARK_PROBABILITY, SINGLE_DAY_FONT_PROBABILITY, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from '$lib/constants';
   import '$lib/styles/animations.css';
 
   // 텍스트 아이템 타입
@@ -18,10 +18,11 @@
     showMyu: boolean;
     showExclamation: boolean;
     showQuestionMark: boolean;
+    exclamationFirst: boolean;  // !?와 ?! 순서 결정
   }
 
-  // 텍스트 개수 확률 (1개: 60%, 2개: 30%, 3개: 10%)
-  const TEXT_COUNT_PROBABILITIES = [0.6, 0.3, 0.1];
+  // 먀/뮤 각각의 개수 확률 (0개: 20%, 1개: 50%, 2개: 20%, 3개: 10%)
+  const TEXT_TYPE_COUNT_PROBABILITIES = [0.2, 0.5, 0.2, 0.1];
   const TEXT_WIDTH_RATIO = 2;
   const ANIMATION_MARGIN = 5;
 
@@ -36,15 +37,19 @@
     showSpecialMessage: false,
     showMyu: false,
     showExclamation: false,
-    showQuestionMark: false
+    showQuestionMark: false,
+    exclamationFirst: true
   }];
 
-  // 텍스트 개수 결정 (1~3개)
-  function getTextCount(): number {
+  // 먀 또는 뮤의 개수 결정 (0~3개)
+  function getTypeCount(): number {
     const rand = Math.random();
-    if (rand < TEXT_COUNT_PROBABILITIES[0]) return 1;
-    if (rand < TEXT_COUNT_PROBABILITIES[0] + TEXT_COUNT_PROBABILITIES[1]) return 2;
-    return 3;
+    let cumulative = 0;
+    for (let i = 0; i < TEXT_TYPE_COUNT_PROBABILITIES.length; i++) {
+      cumulative += TEXT_TYPE_COUNT_PROBABILITIES[i];
+      if (rand < cumulative) return i;
+    }
+    return 0;
   }
 
   // 경계 박스 타입
@@ -90,7 +95,7 @@
   }
 
   // 단일 텍스트 아이템 생성 (겹침 방지)
-  function createTextItem(prevFontIndex: number, existingItems: TextItem[]): TextItem {
+  function createTextItem(prevFontIndex: number, existingItems: TextItem[], isMyu: boolean): TextItem {
     // 폰트 선택
     let fontIndex;
     if (Math.random() < SINGLE_DAY_FONT_PROBABILITY) {
@@ -108,13 +113,14 @@
     // 색상 선택
     const colorIndex = getRandomIndex(textColors.length);
 
-    // 특별 메시지, 뮤, 느낌표, 물음표 (위치 계산 전에 결정)
+    // 특별 메시지, 느낌표, 물음표 (위치 계산 전에 결정)
     const showSpecialMessage = hasLoveCookie() && Math.random() < SPECIAL_MESSAGE_PROBABILITY;
-    // 뮤는 사랑해가 아닐 때만 적용
-    const showMyu = !showSpecialMessage && Math.random() < MYU_PROBABILITY;
+    const showMyu = isMyu;  // 파라미터로 전달받음
     const showExclamation = Math.random() < EXCLAMATION_PROBABILITY;
     // 물음표는 사랑해가 아닐 때만 적용
     const showQuestionMark = !showSpecialMessage && Math.random() < QUESTION_MARK_PROBABILITY;
+    // !?와 ?! 순서 랜덤 결정
+    const exclamationFirst = Math.random() < 0.5;
 
     // 최소 폰트 크기가 들어갈 수 있는 여유 확보
     const minMarginY = FONT_SIZE_MIN / 2 + ANIMATION_MARGIN;
@@ -164,7 +170,8 @@
         showSpecialMessage,
         showMyu,
         showExclamation,
-        showQuestionMark
+        showQuestionMark,
+        exclamationFirst
       };
 
       // 겹침 확인
@@ -190,13 +197,33 @@
     } while (newGradientIndex === currentGradientIndex);
     currentGradientIndex = newGradientIndex;
 
-    // 텍스트 개수 결정 및 생성 (겹침 방지)
-    const count = getTextCount();
+    // 먀와 뮤 개수 독립적으로 결정
+    let myaCount = getTypeCount();
+    let myuCount = getTypeCount();
+
+    // 합이 0이면 둘 중 하나를 1개로
+    if (myaCount + myuCount === 0) {
+      if (Math.random() < 0.5) {
+        myaCount = 1;
+      } else {
+        myuCount = 1;
+      }
+    }
+
+    // 텍스트 아이템 생성
     const newItems: TextItem[] = [];
     let prevFontIndex = textItems[0]?.fontIndex ?? -1;
 
-    for (let i = 0; i < count; i++) {
-      const item = createTextItem(prevFontIndex, newItems);
+    // 먀 아이템 생성
+    for (let i = 0; i < myaCount; i++) {
+      const item = createTextItem(prevFontIndex, newItems, false);
+      newItems.push(item);
+      prevFontIndex = item.fontIndex;
+    }
+
+    // 뮤 아이템 생성
+    for (let i = 0; i < myuCount; i++) {
+      const item = createTextItem(prevFontIndex, newItems, true);
       newItems.push(item);
       prevFontIndex = item.fontIndex;
     }
@@ -243,7 +270,7 @@
       style="font-family: {fonts[item.fontIndex]}; color: {textColors[item.colorIndex]}; font-size: {item.fontSize}vh; left: {item.positionX}%; top: {item.positionY}%; transform: translate(-50%, -50%);"
       class={animations[item.animationIndex]}
     >
-      {item.showSpecialMessage ? '사랑해' : (item.showMyu ? '뮤' : '먀')}{item.showExclamation ? '!' : ''}{item.showQuestionMark ? '?' : ''}
+      {item.showSpecialMessage ? '사랑해' : (item.showMyu ? '뮤' : '먀')}{#if item.exclamationFirst}{item.showExclamation ? '!' : ''}{item.showQuestionMark ? '?' : ''}{:else}{item.showQuestionMark ? '?' : ''}{item.showExclamation ? '!' : ''}{/if}
     </h1>
   {/each}
 </main>

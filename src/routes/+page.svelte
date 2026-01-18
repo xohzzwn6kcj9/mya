@@ -20,6 +20,8 @@
 
   // 텍스트 개수 확률 (1개: 60%, 2개: 30%, 3개: 10%)
   const TEXT_COUNT_PROBABILITIES = [0.6, 0.3, 0.1];
+  const TEXT_WIDTH_RATIO = 2;
+  const ANIMATION_MARGIN = 5;
 
   let currentGradientIndex = getRandomIndex(gradients.length);
   let textItems: TextItem[] = [{
@@ -41,8 +43,50 @@
     return 3;
   }
 
-  // 단일 텍스트 아이템 생성
-  function createTextItem(prevFontIndex: number): TextItem {
+  // 경계 박스 타입
+  interface BoundingBox {
+    left: number;   // vw %
+    right: number;  // vw %
+    top: number;    // vh %
+    bottom: number; // vh %
+  }
+
+  // 텍스트 아이템의 경계 박스 계산 (애니메이션 여유 포함)
+  function getBoundingBox(item: TextItem): BoundingBox {
+    const aspectRatio = window.innerWidth / window.innerHeight;
+    // 텍스트 높이 (vh %)
+    const heightVh = item.fontSize + ANIMATION_MARGIN * 2;
+    // 텍스트 너비 (vh → vw % 변환)
+    const widthVh = item.fontSize * TEXT_WIDTH_RATIO + ANIMATION_MARGIN * 2;
+    const widthVw = widthVh / aspectRatio;
+
+    return {
+      left: item.positionX - widthVw / 2,
+      right: item.positionX + widthVw / 2,
+      top: item.positionY - heightVh / 2,
+      bottom: item.positionY + heightVh / 2
+    };
+  }
+
+  // 두 경계 박스가 겹치는지 확인
+  function isOverlapping(box1: BoundingBox, box2: BoundingBox): boolean {
+    return !(box1.right < box2.left || box1.left > box2.right ||
+             box1.bottom < box2.top || box1.top > box2.bottom);
+  }
+
+  // 기존 아이템들과 겹치는지 확인
+  function isOverlappingWithExisting(newItem: TextItem, existingItems: TextItem[]): boolean {
+    const newBox = getBoundingBox(newItem);
+    for (const existing of existingItems) {
+      if (isOverlapping(newBox, getBoundingBox(existing))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // 단일 텍스트 아이템 생성 (겹침 방지)
+  function createTextItem(prevFontIndex: number, existingItems: TextItem[]): TextItem {
     // 폰트 선택
     let fontIndex;
     if (Math.random() < SINGLE_DAY_FONT_PROBABILITY) {
@@ -60,57 +104,72 @@
     // 색상 선택
     const colorIndex = getRandomIndex(textColors.length);
 
-    // 애니메이션 여유 공간 (vh 단위)
-    const ANIMATION_MARGIN = 5;
-    const TEXT_WIDTH_RATIO = 2;
+    // 특별 메시지 및 느낌표 (위치 계산 전에 결정)
+    const showSpecialMessage = hasLoveCookie() && Math.random() < SPECIAL_MESSAGE_PROBABILITY;
+    const showExclamation = Math.random() < EXCLAMATION_PROBABILITY;
 
     // 최소 폰트 크기가 들어갈 수 있는 여유 확보
     const minMarginY = FONT_SIZE_MIN / 2 + ANIMATION_MARGIN;
     const minMarginX = (FONT_SIZE_MIN * TEXT_WIDTH_RATIO) / 2 + ANIMATION_MARGIN;
 
-    // 랜덤 위치 선택
-    const positionX = Math.random() * (100 - 2 * minMarginX) + minMarginX;
-    const positionY = Math.random() * (100 - 2 * minMarginY) + minMarginY;
-
-    // 최대 폰트 크기 계산
-    const maxFromTop = (positionY - ANIMATION_MARGIN) * 2;
-    const maxFromBottom = (100 - positionY - ANIMATION_MARGIN) * 2;
-    const maxFromLeft = (positionX - ANIMATION_MARGIN) * 2 / TEXT_WIDTH_RATIO;
-    const maxFromRight = (100 - positionX - ANIMATION_MARGIN) * 2 / TEXT_WIDTH_RATIO;
-
-    // 화면 1/3 제한
+    // 화면 1/3 제한 계산
     const maxByHeight = 100 / 3 - ANIMATION_MARGIN * 2;
     const aspectRatio = window.innerWidth / window.innerHeight;
     const screenWidthInVh = aspectRatio * 100;
     const maxByWidth = (screenWidthInVh / 3 - ANIMATION_MARGIN * 2) / TEXT_WIDTH_RATIO;
 
-    const maxFontSize = Math.min(
-      maxFromTop,
-      maxFromBottom,
-      maxFromLeft,
-      maxFromRight,
-      maxByHeight,
-      maxByWidth,
-      FONT_SIZE_MAX
-    );
+    // 겹침 방지: 최대 50번 시도
+    const MAX_ATTEMPTS = 50;
+    let bestItem: TextItem | null = null;
 
-    const effectiveMax = Math.max(maxFontSize, FONT_SIZE_MIN);
-    const fontSize = Math.floor(Math.random() * (effectiveMax - FONT_SIZE_MIN + 1)) + FONT_SIZE_MIN;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      // 랜덤 위치 선택
+      const positionX = Math.random() * (100 - 2 * minMarginX) + minMarginX;
+      const positionY = Math.random() * (100 - 2 * minMarginY) + minMarginY;
 
-    // 특별 메시지 및 느낌표
-    const showSpecialMessage = hasLoveCookie() && Math.random() < SPECIAL_MESSAGE_PROBABILITY;
-    const showExclamation = Math.random() < EXCLAMATION_PROBABILITY;
+      // 최대 폰트 크기 계산
+      const maxFromTop = (positionY - ANIMATION_MARGIN) * 2;
+      const maxFromBottom = (100 - positionY - ANIMATION_MARGIN) * 2;
+      const maxFromLeft = (positionX - ANIMATION_MARGIN) * 2 / TEXT_WIDTH_RATIO;
+      const maxFromRight = (100 - positionX - ANIMATION_MARGIN) * 2 / TEXT_WIDTH_RATIO;
 
-    return {
-      fontIndex,
-      colorIndex,
-      animationIndex,
-      fontSize,
-      positionX,
-      positionY,
-      showSpecialMessage,
-      showExclamation
-    };
+      const maxFontSize = Math.min(
+        maxFromTop,
+        maxFromBottom,
+        maxFromLeft,
+        maxFromRight,
+        maxByHeight,
+        maxByWidth,
+        FONT_SIZE_MAX
+      );
+
+      const effectiveMax = Math.max(maxFontSize, FONT_SIZE_MIN);
+      const fontSize = Math.floor(Math.random() * (effectiveMax - FONT_SIZE_MIN + 1)) + FONT_SIZE_MIN;
+
+      const candidateItem: TextItem = {
+        fontIndex,
+        colorIndex,
+        animationIndex,
+        fontSize,
+        positionX,
+        positionY,
+        showSpecialMessage,
+        showExclamation
+      };
+
+      // 겹침 확인
+      if (!isOverlappingWithExisting(candidateItem, existingItems)) {
+        return candidateItem;
+      }
+
+      // 첫 번째 후보 저장 (모든 시도가 실패할 경우 사용)
+      if (!bestItem) {
+        bestItem = candidateItem;
+      }
+    }
+
+    // 모든 시도 실패 시 첫 번째 후보 반환
+    return bestItem!;
   }
 
   function handleClick() {
@@ -121,13 +180,13 @@
     } while (newGradientIndex === currentGradientIndex);
     currentGradientIndex = newGradientIndex;
 
-    // 텍스트 개수 결정 및 생성
+    // 텍스트 개수 결정 및 생성 (겹침 방지)
     const count = getTextCount();
     const newItems: TextItem[] = [];
     let prevFontIndex = textItems[0]?.fontIndex ?? -1;
 
     for (let i = 0; i < count; i++) {
-      const item = createTextItem(prevFontIndex);
+      const item = createTextItem(prevFontIndex, newItems);
       newItems.push(item);
       prevFontIndex = item.fontIndex;
     }

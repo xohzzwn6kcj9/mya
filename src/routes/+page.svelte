@@ -3,7 +3,7 @@
   import { fonts, textColors, gradients, animations } from '$lib/config/displayOptions';
   import { getRandomIndex } from '$lib/utils/styleUtils';
   import { isTargetDevice, shouldSetCookie, setCookie, hasLoveCookie } from '$lib/utils/userContextUtils';
-  import { SPECIAL_MESSAGE_PROBABILITY, EXCLAMATION_PROBABILITY, SINGLE_DAY_FONT_PROBABILITY, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from '$lib/constants';
+  import { SPECIAL_MESSAGE_PROBABILITY, EXCLAMATION_PROBABILITY, QUESTION_MARK_PROBABILITY, SINGLE_DAY_FONT_PROBABILITY, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from '$lib/constants';
   import '$lib/styles/animations.css';
 
   // 텍스트 아이템 타입
@@ -16,6 +16,7 @@
     positionY: number;
     showSpecialMessage: boolean;
     showExclamation: boolean;
+    showQuestionMark: boolean;
   }
 
   // 텍스트 개수 확률 (1개: 60%, 2개: 30%, 3개: 10%)
@@ -32,7 +33,8 @@
     positionX: 50,
     positionY: 50,
     showSpecialMessage: false,
-    showExclamation: false
+    showExclamation: false,
+    showQuestionMark: false
   }];
 
   // 텍스트 개수 결정 (1~3개)
@@ -104,9 +106,11 @@
     // 색상 선택
     const colorIndex = getRandomIndex(textColors.length);
 
-    // 특별 메시지 및 느낌표 (위치 계산 전에 결정)
+    // 특별 메시지, 느낌표, 물음표 (위치 계산 전에 결정)
     const showSpecialMessage = hasLoveCookie() && Math.random() < SPECIAL_MESSAGE_PROBABILITY;
     const showExclamation = Math.random() < EXCLAMATION_PROBABILITY;
+    // 물음표는 "먀"일 때만 적용
+    const showQuestionMark = !showSpecialMessage && Math.random() < QUESTION_MARK_PROBABILITY;
 
     // 최소 폰트 크기가 들어갈 수 있는 여유 확보
     const minMarginY = FONT_SIZE_MIN / 2 + ANIMATION_MARGIN;
@@ -154,7 +158,8 @@
         positionX,
         positionY,
         showSpecialMessage,
-        showExclamation
+        showExclamation,
+        showQuestionMark
       };
 
       // 겹침 확인
@@ -232,7 +237,7 @@
       style="font-family: {fonts[item.fontIndex]}; color: {textColors[item.colorIndex]}; font-size: {item.fontSize}vh; left: {item.positionX}%; top: {item.positionY}%; transform: translate(-50%, -50%);"
       class={animations[item.animationIndex]}
     >
-      {item.showSpecialMessage ? '사랑해' : '먀'}{item.showExclamation ? '!' : ''}
+      {item.showSpecialMessage ? '사랑해' : '먀'}{item.showExclamation ? '!' : ''}{item.showQuestionMark ? '?' : ''}
     </h1>
   {/each}
 </main>

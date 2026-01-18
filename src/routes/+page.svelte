@@ -55,6 +55,14 @@
   }
 
   onMount(() => {
+    // 뷰포트 높이 설정 (모바일 브라우저 대응)
+    function setViewportHeight() {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    setViewportHeight();
+    window.addEventListener('resize', setViewportHeight);
+
     // 폰트 프리로드
     fonts.forEach(font => {
       const link = document.createElement('link');
@@ -67,6 +75,11 @@
     if (shouldSetCookie()) {
       setCookie();
     }
+
+    // cleanup
+    return () => {
+      window.removeEventListener('resize', setViewportHeight);
+    };
   });
 </script>
 
@@ -87,8 +100,13 @@
     margin: 0;
     padding: 0;
     width: 100vw;
-    height: 100vh;
+    height: 100vh; /* 폴백 */
+    height: 100dvh; /* 최신 브라우저 */
+    height: calc(var(--vh, 1vh) * 100); /* JS 폴백 */
     overflow: hidden;
+    position: fixed; /* 스크롤 완전 방지 */
+    top: 0;
+    left: 0;
     display: flex;
     justify-content: center;
     align-items: center;

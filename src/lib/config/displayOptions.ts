@@ -56,11 +56,11 @@ export const gradients = [
 ];
 
 export const animations = [
-  'bounce',
   'pulse',
-  'shake',
-  'scale',
   'fade',
-  'slide',
-  'wiggle'
+  'wiggle',
+  'glow',
+  'float',
+  'heartbeat',
+  'breathe'
 ]; 

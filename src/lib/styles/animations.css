@@ -1,46 +1,60 @@
-@keyframes bounce {
-  0%, 100% { transform: translate(-50%, -50%) translateY(0); }
-  50% { transform: translate(-50%, -50%) translateY(-20px); }
-}
-
+/* 유지: pulse - 크기 변화 */
 @keyframes pulse {
   0% { transform: translate(-50%, -50%) scale(1); }
   50% { transform: translate(-50%, -50%) scale(1.1); }
   100% { transform: translate(-50%, -50%) scale(1); }
 }
 
-@keyframes shake {
-  0%, 100% { transform: translate(-50%, -50%); }
-  25% { transform: translate(calc(-50% - 10px), -50%); }
-  75% { transform: translate(calc(-50% + 10px), -50%); }
-}
-
-@keyframes scale {
-  0% { transform: translate(-50%, -50%) scale(0.8); }
-  50% { transform: translate(-50%, -50%) scale(1.2); }
-  100% { transform: translate(-50%, -50%) scale(0.8); }
-}
-
+/* 유지: fade - 투명도 변화 */
 @keyframes fade {
   0%, 100% { opacity: 1; transform: translate(-50%, -50%); }
   50% { opacity: 0.5; transform: translate(-50%, -50%); }
 }
 
-@keyframes slide {
-  0% { transform: translate(calc(-50% - 20px), -50%); }
-  100% { transform: translate(calc(-50% + 20px), -50%); }
-}
-
+/* 완화: wiggle - 부드러운 회전 (5도→3도, 0.5초→1.5초) */
 @keyframes wiggle {
   0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
-  25% { transform: translate(-50%, -50%) rotate(-5deg); }
-  75% { transform: translate(-50%, -50%) rotate(5deg); }
+  25% { transform: translate(-50%, -50%) rotate(-3deg); }
+  75% { transform: translate(-50%, -50%) rotate(3deg); }
 }
 
-.bounce { animation: bounce 1s infinite; }
+/* 신규: glow - 텍스트 발광 효과 */
+@keyframes glow {
+  0%, 100% {
+    transform: translate(-50%, -50%);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    transform: translate(-50%, -50%);
+    text-shadow: 0 0 20px currentColor, 0 0 30px currentColor, 2px 2px 4px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* 신규: float - 미세하게 떠다니는 느낌 */
+@keyframes float {
+  0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+  50% { transform: translate(-50%, -50%) translateY(-3px); }
+}
+
+/* 신규: heartbeat - 심장박동 효과 */
+@keyframes heartbeat {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  14% { transform: translate(-50%, -50%) scale(1.1); }
+  28% { transform: translate(-50%, -50%) scale(1); }
+  42% { transform: translate(-50%, -50%) scale(1.1); }
+  56% { transform: translate(-50%, -50%) scale(1); }
+}
+
+/* 신규: breathe - 숨쉬는 듯한 미세한 크기 변화 */
+@keyframes breathe {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.03); }
+}
+
 .pulse { animation: pulse 1s infinite; }
-.shake { animation: shake 0.5s infinite; }
-.scale { animation: scale 1s infinite; }
-.fade { animation: fade 1s infinite; }
-.slide { animation: slide 1s infinite alternate; }
-.wiggle { animation: wiggle 0.5s infinite; }
+.fade { animation: fade 1.5s infinite; }
+.wiggle { animation: wiggle 1.5s infinite; }
+.glow { animation: glow 2s infinite; }
+.float { animation: float 3s ease-in-out infinite; }
+.heartbeat { animation: heartbeat 1.5s infinite; }
+.breathe { animation: breathe 2.5s ease-in-out infinite; }

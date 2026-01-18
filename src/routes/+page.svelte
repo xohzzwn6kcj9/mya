@@ -44,17 +44,34 @@
     // 배경색에 맞는 대비되는 텍스트 색상 선택
     currentColorIndex = getRandomIndex(textColors.length);
 
-    // 랜덤 위치 (15% ~ 85%)
-    positionX = Math.random() * 70 + 15;
-    positionY = Math.random() * 70 + 15;
+    // 애니메이션 여유 공간 (vh 단위): bounce 20px + scale 20% 고려
+    const ANIMATION_MARGIN = 5;
 
-    // 가장자리 거리에 따른 최대 폰트 크기 계산
-    const edgeDistance = Math.min(positionX, 100 - positionX, positionY, 100 - positionY);
-    const sizeMultiplier = edgeDistance / 50;  // 0~1 범위
-    const maxFontSize = FONT_SIZE_MIN + (FONT_SIZE_MAX - FONT_SIZE_MIN) * sizeMultiplier;
+    // 최소 폰트 크기가 들어갈 수 있는 여유 확보
+    const minMargin = FONT_SIZE_MIN / 2 + ANIMATION_MARGIN;
+
+    // 랜덤 위치 선택 (최소 여유 공간 확보)
+    positionX = Math.random() * (100 - 2 * minMargin) + minMargin;
+    positionY = Math.random() * (100 - 2 * minMargin) + minMargin;
+
+    // 해당 위치에서 화면을 벗어나지 않는 최대 폰트 크기 계산
+    // (폰트 높이/너비의 절반 + 애니메이션 여유가 경계를 넘지 않아야 함)
+    const maxFromTop = (positionY - ANIMATION_MARGIN) * 2;
+    const maxFromBottom = (100 - positionY - ANIMATION_MARGIN) * 2;
+    const maxFromLeft = (positionX - ANIMATION_MARGIN) * 2;
+    const maxFromRight = (100 - positionX - ANIMATION_MARGIN) * 2;
+
+    const maxFontSize = Math.min(
+      maxFromTop,
+      maxFromBottom,
+      maxFromLeft,
+      maxFromRight,
+      FONT_SIZE_MAX
+    );
 
     // 조정된 범위 내에서 랜덤 크기
-    currentFontSize = Math.floor(Math.random() * (maxFontSize - FONT_SIZE_MIN + 1)) + FONT_SIZE_MIN;
+    const effectiveMax = Math.max(maxFontSize, FONT_SIZE_MIN);
+    currentFontSize = Math.floor(Math.random() * (effectiveMax - FONT_SIZE_MIN + 1)) + FONT_SIZE_MIN;
 
     // 특별 메시지 표시 여부 결정 (첫 클릭 이후에만)
     if (hasLoveCookie()) {

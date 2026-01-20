@@ -334,6 +334,7 @@
     position: relative;
     transition: background 0.2s ease;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
 
   h1 {
@@ -345,6 +346,7 @@
     text-align: center;
     position: absolute;
     transform-origin: center center;
+    -webkit-tap-highlight-color: transparent;
   }
 
 

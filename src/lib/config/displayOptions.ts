@@ -79,4 +79,17 @@ export const animations = [
   'breathe',
   'tilt',
   'nod'
+];
+
+export const heartColors = [
+  '#FFB6C1',  // Light Pink
+  '#FFC0CB',  // Pink
+  '#FF69B4',  // Hot Pink
+  '#FFD1DC',  // Pastel Pink
+  '#FFDAB9',  // Peach Puff
+  '#E6E6FA',  // Lavender
+  '#DDA0DD',  // Plum
+  '#F0E68C',  // Khaki
+  '#98FB98',  // Pale Green
+  '#ADD8E6',  // Light Blue
 ]; 

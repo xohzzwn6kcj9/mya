@@ -5,6 +5,7 @@
   import { isTargetDevice, shouldSetCookie, setCookie, hasLoveCookie } from '$lib/utils/userContextUtils';
   import { SPECIAL_MESSAGE_PROBABILITY, EXCLAMATION_PROBABILITY, QUESTION_MARK_PROBABILITY, SINGLE_DAY_FONT_PROBABILITY, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from '$lib/constants';
   import '$lib/styles/animations.css';
+  import HeartBubbles from '$lib/components/HeartBubbles.svelte';
 
   // 텍스트 아이템 타입
   interface TextItem {
@@ -19,6 +20,13 @@
     showExclamation: boolean;
     showQuestionMark: boolean;
     exclamationFirst: boolean;  // !?와 ?! 순서 결정
+  }
+
+  // 하트 이펙트 타입
+  interface HeartEffect {
+    id: number;
+    x: number;
+    y: number;
   }
 
   // 먀/뮤 각각의 개수 확률 (0개: 20%, 1개: 50%, 2개: 20%, 3개: 10%)
@@ -40,6 +48,14 @@
     showQuestionMark: false,
     exclamationFirst: true
   }];
+
+  // 하트 이펙트 상태
+  let heartEffects: HeartEffect[] = [];
+  let nextHeartId = 0;
+
+  function removeHeartEffect(id: number) {
+    heartEffects = heartEffects.filter(effect => effect.id !== id);
+  }
 
   // 먀 또는 뮤의 개수 결정 (0~3개)
   function getTypeCount(): number {
@@ -189,7 +205,23 @@
     return bestItem!;
   }
 
-  function handleClick() {
+  function handleClick(event: MouseEvent | TouchEvent) {
+    // 터치/클릭 좌표 추출
+    let clientX: number, clientY: number;
+    if ('touches' in event && event.touches.length > 0) {
+      clientX = event.touches[0].clientX;
+      clientY = event.touches[0].clientY;
+    } else if ('clientX' in event) {
+      clientX = event.clientX;
+      clientY = event.clientY;
+    } else {
+      clientX = window.innerWidth / 2;
+      clientY = window.innerHeight / 2;
+    }
+
+    // 하트 이펙트 생성
+    heartEffects = [...heartEffects, { id: nextHeartId++, x: clientX, y: clientY }];
+
     // 배경색 변경
     let newGradientIndex;
     do {
@@ -274,6 +306,10 @@
     </h1>
   {/each}
 </main>
+
+{#each heartEffects as effect (effect.id)}
+  <HeartBubbles x={effect.x} y={effect.y} on:complete={() => removeHeartEffect(effect.id)} />
+{/each}
 
 <style>
   :global(body) {

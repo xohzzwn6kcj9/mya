@@ -73,3 +73,29 @@
 .breathe { animation: breathe 2.5s ease-in-out infinite; }
 .tilt { animation: tilt 2.5s ease-in-out infinite; }
 .nod { animation: nod 2s ease-in-out infinite; }
+
+/* heart-bubble - 탄산 거품처럼 터지며 떠오르는 효과 */
+@keyframes heart-bubble {
+  0% {
+    opacity: 1;
+    transform: scale(0.3) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+    transform: scale(1.3) rotate(-10deg);  /* 팡! 터짐 */
+  }
+  30% {
+    transform: scale(1) rotate(5deg);
+  }
+  50% {
+    transform: scale(1.1) translateY(-20px) rotate(-5deg);
+  }
+  70% {
+    opacity: 0.7;
+    transform: scale(0.9) translateY(-40px) rotate(8deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5) translateY(-60px) rotate(-3deg);
+  }
+}

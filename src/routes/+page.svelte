@@ -31,7 +31,7 @@
 
   // 먀/뮤 각각의 개수 확률 (0개: 20%, 1개: 50%, 2개: 20%, 3개: 10%)
   const TEXT_TYPE_COUNT_PROBABILITIES = [0.2, 0.5, 0.2, 0.1];
-  const TEXT_WIDTH_RATIO = 2;
+  const CHAR_WIDTH_RATIO = 1.2;  // 한글 한 글자의 너비/높이 비율
   const ANIMATION_MARGIN = 5;
 
   let currentGradientIndex = getRandomIndex(gradients.length);
@@ -76,13 +76,24 @@
     bottom: number; // vh %
   }
 
+  // 텍스트 아이템의 글자 수 계산
+  function getTextCharCount(item: TextItem): number {
+    // 기본 텍스트: 사랑해(3글자) 또는 먀/뮤(1글자)
+    let count = item.showSpecialMessage ? 3 : 1;
+    // 느낌표/물음표 추가 (각각 0.5글자로 계산 - 폰트 너비가 좁음)
+    if (item.showExclamation) count += 0.5;
+    if (item.showQuestionMark) count += 0.5;
+    return count;
+  }
+
   // 텍스트 아이템의 경계 박스 계산 (애니메이션 여유 포함)
   function getBoundingBox(item: TextItem): BoundingBox {
     const aspectRatio = window.innerWidth / window.innerHeight;
+    const charCount = getTextCharCount(item);
     // 텍스트 높이 (vh %)
     const heightVh = item.fontSize + ANIMATION_MARGIN * 2;
-    // 텍스트 너비 (vh → vw % 변환)
-    const widthVh = item.fontSize * TEXT_WIDTH_RATIO + ANIMATION_MARGIN * 2;
+    // 텍스트 너비 (글자 수 기반, vh → vw % 변환)
+    const widthVh = item.fontSize * CHAR_WIDTH_RATIO * charCount + ANIMATION_MARGIN * 2;
     const widthVw = widthVh / aspectRatio;
 
     return {
@@ -138,30 +149,41 @@
     // !?와 ?! 순서 랜덤 결정
     const exclamationFirst = Math.random() < 0.5;
 
+    // 글자 수 계산 (너비 제한에 사용)
+    const tempItem = { showSpecialMessage, showExclamation, showQuestionMark } as TextItem;
+    const charCount = getTextCharCount(tempItem);
+    const textWidthRatio = CHAR_WIDTH_RATIO * charCount;
+
     // 최소 폰트 크기가 들어갈 수 있는 여유 확보
     const minMarginY = FONT_SIZE_MIN / 2 + ANIMATION_MARGIN;
-    const minMarginX = (FONT_SIZE_MIN * TEXT_WIDTH_RATIO) / 2 + ANIMATION_MARGIN;
+    const minMarginX = (FONT_SIZE_MIN * textWidthRatio) / 2 + ANIMATION_MARGIN;
 
-    // 화면 1/3 제한 계산
+    // 화면 1/3 제한 계산 (글자 수 반영)
     const maxByHeight = 100 / 3 - ANIMATION_MARGIN * 2;
     const aspectRatio = window.innerWidth / window.innerHeight;
     const screenWidthInVh = aspectRatio * 100;
-    const maxByWidth = (screenWidthInVh / 3 - ANIMATION_MARGIN * 2) / TEXT_WIDTH_RATIO;
+    const maxByWidth = (screenWidthInVh / 3 - ANIMATION_MARGIN * 2) / textWidthRatio;
 
-    // 겹침 방지: 최대 50번 시도
-    const MAX_ATTEMPTS = 50;
+    // 겹침 방지: 최대 100번 시도 (폰트 크기 축소 포함)
+    const MAX_ATTEMPTS = 100;
     let bestItem: TextItem | null = null;
+    let bestOverlapArea = Infinity;
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      // 시도 횟수에 따라 폰트 크기 범위 축소
+      const sizeReductionFactor = Math.min(attempt / 50, 0.5);  // 최대 50% 축소
+      const adjustedMaxSize = FONT_SIZE_MAX * (1 - sizeReductionFactor);
+      const adjustedMinSize = FONT_SIZE_MIN;
+
       // 랜덤 위치 선택
       const positionX = Math.random() * (100 - 2 * minMarginX) + minMarginX;
       const positionY = Math.random() * (100 - 2 * minMarginY) + minMarginY;
 
-      // 최대 폰트 크기 계산
+      // 최대 폰트 크기 계산 (글자 수 반영)
       const maxFromTop = (positionY - ANIMATION_MARGIN) * 2;
       const maxFromBottom = (100 - positionY - ANIMATION_MARGIN) * 2;
-      const maxFromLeft = (positionX - ANIMATION_MARGIN) * 2 / TEXT_WIDTH_RATIO;
-      const maxFromRight = (100 - positionX - ANIMATION_MARGIN) * 2 / TEXT_WIDTH_RATIO;
+      const maxFromLeft = (positionX - ANIMATION_MARGIN) * 2 / textWidthRatio;
+      const maxFromRight = (100 - positionX - ANIMATION_MARGIN) * 2 / textWidthRatio;
 
       const maxFontSize = Math.min(
         maxFromTop,
@@ -170,11 +192,11 @@
         maxFromRight,
         maxByHeight,
         maxByWidth,
-        FONT_SIZE_MAX
+        adjustedMaxSize
       );
 
-      const effectiveMax = Math.max(maxFontSize, FONT_SIZE_MIN);
-      const fontSize = Math.floor(Math.random() * (effectiveMax - FONT_SIZE_MIN + 1)) + FONT_SIZE_MIN;
+      const effectiveMax = Math.max(maxFontSize, adjustedMinSize);
+      const fontSize = Math.floor(Math.random() * (effectiveMax - adjustedMinSize + 1)) + adjustedMinSize;
 
       const candidateItem: TextItem = {
         fontIndex,
@@ -195,13 +217,25 @@
         return candidateItem;
       }
 
-      // 첫 번째 후보 저장 (모든 시도가 실패할 경우 사용)
-      if (!bestItem) {
+      // 겹침 영역이 가장 작은 후보 저장
+      const candidateBox = getBoundingBox(candidateItem);
+      let totalOverlapArea = 0;
+      for (const existing of existingItems) {
+        const existingBox = getBoundingBox(existing);
+        if (isOverlapping(candidateBox, existingBox)) {
+          const overlapWidth = Math.max(0, Math.min(candidateBox.right, existingBox.right) - Math.max(candidateBox.left, existingBox.left));
+          const overlapHeight = Math.max(0, Math.min(candidateBox.bottom, existingBox.bottom) - Math.max(candidateBox.top, existingBox.top));
+          totalOverlapArea += overlapWidth * overlapHeight;
+        }
+      }
+
+      if (totalOverlapArea < bestOverlapArea) {
+        bestOverlapArea = totalOverlapArea;
         bestItem = candidateItem;
       }
     }
 
-    // 모든 시도 실패 시 첫 번째 후보 반환
+    // 모든 시도 실패 시 겹침이 가장 작은 후보 반환
     return bestItem!;
   }
 

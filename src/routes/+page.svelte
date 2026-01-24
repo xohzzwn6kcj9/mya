@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { fonts, textColors, gradients, animations } from '$lib/config/displayOptions';
+  import { fonts, animations } from '$lib/config/displayOptions';
   import { getRandomIndex } from '$lib/utils/styleUtils';
+  import { selectTheme, selectDifferentTheme, shouldChangeTheme, type ThemeId, type Theme } from '$lib/utils/themeUtils';
   import { isTargetDevice, shouldSetCookie, setCookie, hasLoveCookie } from '$lib/utils/userContextUtils';
   import { SPECIAL_MESSAGE_PROBABILITY, EXCLAMATION_PROBABILITY, QUESTION_MARK_PROBABILITY, SINGLE_DAY_FONT_PROBABILITY, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from '$lib/constants';
   import '$lib/styles/animations.css';
@@ -34,10 +35,13 @@
   const TEXT_WIDTH_RATIO = 2;
   const ANIMATION_MARGIN = 5;
 
-  let currentGradientIndex = getRandomIndex(gradients.length);
+  // 현재 테마 (새로고침 시 선택)
+  let currentTheme: Theme = selectTheme();
+  let currentGradientIndex = getRandomIndex(currentTheme.gradients.length);
+
   let textItems: TextItem[] = [{
     fontIndex: getRandomIndex(fonts.length),
-    colorIndex: getRandomIndex(textColors.length),
+    colorIndex: getRandomIndex(currentTheme.textColors.length),
     animationIndex: getRandomIndex(animations.length),
     fontSize: FONT_SIZE_DEFAULT,
     positionX: 50,
@@ -126,8 +130,8 @@
     // 애니메이션 선택
     const animationIndex = getRandomIndex(animations.length);
 
-    // 색상 선택
-    const colorIndex = getRandomIndex(textColors.length);
+    // 색상 선택 (현재 테마에서)
+    const colorIndex = getRandomIndex(currentTheme.textColors.length);
 
     // 특별 메시지, 느낌표, 물음표 (위치 계산 전에 결정)
     const showSpecialMessage = hasLoveCookie() && Math.random() < SPECIAL_MESSAGE_PROBABILITY;
@@ -222,11 +226,16 @@
     // 하트 이펙트 생성
     heartEffects = [...heartEffects, { id: nextHeartId++, x: clientX, y: clientY }];
 
-    // 배경색 변경
+    // 10% 확률로 테마 변경
+    if (shouldChangeTheme()) {
+      currentTheme = selectDifferentTheme(currentTheme.id as ThemeId);
+    }
+
+    // 배경색 변경 (현재 테마 내에서)
     let newGradientIndex;
     do {
-      newGradientIndex = getRandomIndex(gradients.length);
-    } while (newGradientIndex === currentGradientIndex);
+      newGradientIndex = getRandomIndex(currentTheme.gradients.length);
+    } while (newGradientIndex === currentGradientIndex && currentTheme.gradients.length > 1);
     currentGradientIndex = newGradientIndex;
 
     // 먀와 뮤 개수 독립적으로 결정
@@ -294,12 +303,12 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
 <main
-  style="background: {gradients[currentGradientIndex]}"
+  style="background: {currentTheme.gradients[currentGradientIndex]}"
   on:click={handleClick}
 >
   {#each textItems as item, i (i)}
     <h1
-      style="font-family: {fonts[item.fontIndex]}; color: {textColors[item.colorIndex]}; font-size: {item.fontSize}vh; left: {item.positionX}%; top: {item.positionY}%; transform: translate(-50%, -50%);"
+      style="font-family: {fonts[item.fontIndex]}; color: {currentTheme.textColors[item.colorIndex]}; font-size: {item.fontSize}vh; left: {item.positionX}%; top: {item.positionY}%; transform: translate(-50%, -50%);"
       class={animations[item.animationIndex]}
     >
       {item.showSpecialMessage ? '사랑해' : (item.showMyu ? '뮤' : '먀')}{#if item.exclamationFirst}{item.showExclamation ? '!' : ''}{item.showQuestionMark ? '?' : ''}{:else}{item.showQuestionMark ? '?' : ''}{item.showExclamation ? '!' : ''}{/if}
@@ -308,7 +317,7 @@
 </main>
 
 {#each heartEffects as effect (effect.id)}
-  <HeartBubbles x={effect.x} y={effect.y} on:complete={() => removeHeartEffect(effect.id)} />
+  <HeartBubbles x={effect.x} y={effect.y} heartColors={currentTheme.heartColors} on:complete={() => removeHeartEffect(effect.id)} />
 {/each}
 
 <style>

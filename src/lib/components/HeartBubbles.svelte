@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
-  import { heartColors } from '$lib/config/displayOptions';
   import {
     HEART_COUNT_MIN,
     HEART_COUNT_MAX,
@@ -13,6 +12,7 @@
 
   export let x: number;
   export let y: number;
+  export let heartColors: string[];
 
   const dispatch = createEventDispatcher();
 

@@ -11,8 +11,8 @@ export const FONT_SIZE_MAX = 25;
 export const FONT_SIZE_DEFAULT = 18;
 
 // Heart bubble effect
-export const HEART_COUNT_MIN = 3;
-export const HEART_COUNT_MAX = 5;
+export const HEART_COUNT_MIN = 4;
+export const HEART_COUNT_MAX = 6;
 export const HEART_SIZE_MIN = 24;
 export const HEART_SIZE_MAX = 40;
 export const HEART_ANIMATION_DURATION = 800;

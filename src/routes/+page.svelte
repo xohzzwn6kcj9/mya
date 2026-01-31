@@ -10,12 +10,16 @@
 
   // 텍스트 아이템 타입
   interface TextItem {
+    id: number;
     fontIndex: number;
     colorIndex: number;
     animationIndex: number;
     fontSize: number;
     positionX: number;
     positionY: number;
+    velocityX: number;  // 속도 (당구공 물리)
+    velocityY: number;
+    isDragging: boolean;
     showSpecialMessage: boolean;
     showMyu: boolean;
     showExclamation: boolean;
@@ -40,12 +44,16 @@
   let currentGradientIndex = getRandomIndex(currentTheme.gradients.length);
 
   let textItems: TextItem[] = [{
+    id: nextItemId++,
     fontIndex: getRandomIndex(fonts.length),
     colorIndex: getRandomIndex(currentTheme.textColors.length),
     animationIndex: getRandomIndex(animations.length),
     fontSize: FONT_SIZE_DEFAULT,
     positionX: 50,
     positionY: 50,
+    velocityX: 0,
+    velocityY: 0,
+    isDragging: false,
     showSpecialMessage: false,
     showMyu: false,
     showExclamation: false,
@@ -57,10 +65,28 @@
   let heartEffects: HeartEffect[] = [];
   let nextHeartId = 0;
 
-  // 드래그 상태 추적
-  let isDragging = false;
+  // 드래그 상태 추적 (배경 드래그용)
+  let isBackgroundDragging = false;
   let lastHeartTime = 0;
   const HEART_THROTTLE_MS = 20; // 드래그 시 하트 생성 간격 (ms)
+
+  // 물리 상수
+  const FRICTION = 0.985;  // 마찰 계수 (1에 가까울수록 덜 감속)
+  const MIN_VELOCITY = 0.1;  // 최소 속도 (이하면 정지)
+  const BOUNCE_DAMPING = 0.8;  // 벽 반사 시 에너지 손실
+  const THROW_MULTIPLIER = 0.8;  // 던질 때 속도 배수
+
+  // 글자 드래그 상태
+  let draggedItemId: number | null = null;
+  let dragOffsetX = 0;  // 드래그 시작 시 글자 중심과의 오프셋
+  let dragOffsetY = 0;
+  let lastDragX = 0;  // 속도 계산용
+  let lastDragY = 0;
+  let lastDragTime = 0;
+  let nextItemId = 0;
+
+  // 물리 시뮬레이션 활성화
+  let animationFrameId: number | null = null;
 
   function removeHeartEffect(id: number) {
     heartEffects = heartEffects.filter(effect => effect.id !== id);
@@ -191,12 +217,16 @@
       const fontSize = Math.floor(Math.random() * (effectiveMax - FONT_SIZE_MIN + 1)) + FONT_SIZE_MIN;
 
       const candidateItem: TextItem = {
+        id: nextItemId++,
         fontIndex,
         colorIndex,
         animationIndex,
         fontSize,
         positionX,
         positionY,
+        velocityX: 0,
+        velocityY: 0,
+        isDragging: false,
         showSpecialMessage,
         showMyu,
         showExclamation,
@@ -282,15 +312,17 @@
     textItems = newItems;
   }
 
-  // 드래그 시작
-  function handleDragStart(event: MouseEvent | TouchEvent) {
-    isDragging = true;
+  // 배경 드래그 시작 (글자가 아닌 곳에서 드래그 시)
+  function handleBackgroundDragStart(event: MouseEvent | TouchEvent) {
+    // 글자를 드래그 중이면 배경 드래그 무시
+    if (draggedItemId !== null) return;
+    isBackgroundDragging = true;
     lastHeartTime = Date.now();
   }
 
-  // 드래그 중 하트 생성
-  function handleDragMove(event: MouseEvent | TouchEvent) {
-    if (!isDragging) return;
+  // 배경 드래그 중 하트 생성
+  function handleBackgroundDragMove(event: MouseEvent | TouchEvent) {
+    if (!isBackgroundDragging || draggedItemId !== null) return;
 
     const now = Date.now();
     if (now - lastHeartTime < HEART_THROTTLE_MS) return;
@@ -310,9 +342,204 @@
     createHeartAtPosition(clientX, clientY);
   }
 
-  // 드래그 종료
-  function handleDragEnd() {
-    isDragging = false;
+  // 배경 드래그 종료
+  function handleBackgroundDragEnd() {
+    isBackgroundDragging = false;
+  }
+
+  // 좌표 추출 헬퍼
+  function getEventCoords(event: MouseEvent | TouchEvent): { x: number; y: number } | null {
+    if ('touches' in event && event.touches.length > 0) {
+      return { x: event.touches[0].clientX, y: event.touches[0].clientY };
+    } else if ('clientX' in event) {
+      return { x: (event as MouseEvent).clientX, y: (event as MouseEvent).clientY };
+    }
+    return null;
+  }
+
+  // 픽셀 좌표를 vw/vh %로 변환
+  function pixelToPercent(px: number, py: number): { x: number; y: number } {
+    return {
+      x: (px / window.innerWidth) * 100,
+      y: (py / window.innerHeight) * 100
+    };
+  }
+
+  // vw/vh %를 픽셀로 변환
+  function percentToPixel(vwPercent: number, vhPercent: number): { x: number; y: number } {
+    return {
+      x: (vwPercent / 100) * window.innerWidth,
+      y: (vhPercent / 100) * window.innerHeight
+    };
+  }
+
+  // 글자 드래그 시작
+  function handleItemDragStart(event: MouseEvent | TouchEvent, itemId: number) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const coords = getEventCoords(event);
+    if (!coords) return;
+
+    const item = textItems.find(t => t.id === itemId);
+    if (!item) return;
+
+    // 글자 중심 위치 (픽셀)
+    const itemCenter = percentToPixel(item.positionX, item.positionY);
+
+    draggedItemId = itemId;
+    dragOffsetX = coords.x - itemCenter.x;
+    dragOffsetY = coords.y - itemCenter.y;
+    lastDragX = coords.x;
+    lastDragY = coords.y;
+    lastDragTime = Date.now();
+
+    // 드래그 중인 아이템 상태 업데이트
+    textItems = textItems.map(t =>
+      t.id === itemId
+        ? { ...t, isDragging: true, velocityX: 0, velocityY: 0 }
+        : t
+    );
+  }
+
+  // 글자 드래그 이동 (전역)
+  function handleGlobalDragMove(event: MouseEvent | TouchEvent) {
+    // 글자 드래그 중이면 글자 이동
+    if (draggedItemId !== null) {
+      event.preventDefault();
+      const coords = getEventCoords(event);
+      if (!coords) return;
+
+      const newPos = pixelToPercent(coords.x - dragOffsetX, coords.y - dragOffsetY);
+
+      // 속도 계산을 위한 시간 차이
+      const now = Date.now();
+      const deltaTime = now - lastDragTime;
+
+      textItems = textItems.map(t => {
+        if (t.id === draggedItemId) {
+          return { ...t, positionX: newPos.x, positionY: newPos.y };
+        }
+        return t;
+      });
+
+      // 속도 계산용 저장
+      lastDragX = coords.x;
+      lastDragY = coords.y;
+      lastDragTime = now;
+    } else {
+      // 배경 드래그
+      handleBackgroundDragMove(event);
+    }
+  }
+
+  // 글자 드래그 종료 (전역)
+  function handleGlobalDragEnd(event: MouseEvent | TouchEvent) {
+    if (draggedItemId !== null) {
+      const coords = getEventCoords(event);
+      const now = Date.now();
+      const deltaTime = Math.max(now - lastDragTime, 1); // 0 방지
+
+      if (coords && deltaTime < 100) {  // 100ms 이내의 움직임만 던지기로 처리
+        // 픽셀 단위 속도를 % 단위로 변환
+        const velocityXPixel = (coords.x - lastDragX) / deltaTime * 16;  // 약 60fps 기준
+        const velocityYPixel = (coords.y - lastDragY) / deltaTime * 16;
+
+        const velocityX = (velocityXPixel / window.innerWidth) * 100 * THROW_MULTIPLIER;
+        const velocityY = (velocityYPixel / window.innerHeight) * 100 * THROW_MULTIPLIER;
+
+        textItems = textItems.map(t =>
+          t.id === draggedItemId
+            ? { ...t, isDragging: false, velocityX, velocityY }
+            : t
+        );
+      } else {
+        textItems = textItems.map(t =>
+          t.id === draggedItemId
+            ? { ...t, isDragging: false }
+            : t
+        );
+      }
+
+      draggedItemId = null;
+    }
+    handleBackgroundDragEnd();
+  }
+
+  // 물리 시뮬레이션 업데이트
+  function updatePhysics() {
+    let hasMovingItems = false;
+
+    textItems = textItems.map(item => {
+      if (item.isDragging) {
+        hasMovingItems = true;
+        return item;
+      }
+
+      // 속도가 충분히 작으면 정지
+      if (Math.abs(item.velocityX) < MIN_VELOCITY && Math.abs(item.velocityY) < MIN_VELOCITY) {
+        return { ...item, velocityX: 0, velocityY: 0 };
+      }
+
+      hasMovingItems = true;
+
+      // 위치 업데이트
+      let newX = item.positionX + item.velocityX;
+      let newY = item.positionY + item.velocityY;
+      let newVelX = item.velocityX * FRICTION;
+      let newVelY = item.velocityY * FRICTION;
+
+      // 글자 크기 계산 (경계 반사용)
+      const aspectRatio = window.innerWidth / window.innerHeight;
+      const halfHeightVh = item.fontSize / 2 + ANIMATION_MARGIN;
+      const halfWidthVh = (item.fontSize * TEXT_WIDTH_RATIO) / 2 + ANIMATION_MARGIN;
+      const halfWidthVw = halfWidthVh / aspectRatio;
+
+      // 좌우 벽 반사
+      if (newX - halfWidthVw < 0) {
+        newX = halfWidthVw;
+        newVelX = -newVelX * BOUNCE_DAMPING;
+      } else if (newX + halfWidthVw > 100) {
+        newX = 100 - halfWidthVw;
+        newVelX = -newVelX * BOUNCE_DAMPING;
+      }
+
+      // 상하 벽 반사
+      if (newY - halfHeightVh < 0) {
+        newY = halfHeightVh;
+        newVelY = -newVelY * BOUNCE_DAMPING;
+      } else if (newY + halfHeightVh > 100) {
+        newY = 100 - halfHeightVh;
+        newVelY = -newVelY * BOUNCE_DAMPING;
+      }
+
+      return {
+        ...item,
+        positionX: newX,
+        positionY: newY,
+        velocityX: newVelX,
+        velocityY: newVelY
+      };
+    });
+
+    // 움직이는 아이템이 있으면 계속 애니메이션
+    if (hasMovingItems) {
+      animationFrameId = requestAnimationFrame(updatePhysics);
+    } else {
+      animationFrameId = null;
+    }
+  }
+
+  // 물리 시뮬레이션 시작 (움직이는 아이템이 있을 때)
+  function startPhysicsIfNeeded() {
+    if (animationFrameId === null) {
+      animationFrameId = requestAnimationFrame(updatePhysics);
+    }
+  }
+
+  // textItems가 변경될 때마다 물리 시뮬레이션 확인
+  $: if (textItems.some(t => t.velocityX !== 0 || t.velocityY !== 0 || t.isDragging)) {
+    startPhysicsIfNeeded();
   }
 
   onMount(() => {
@@ -340,6 +567,9 @@
     // cleanup
     return () => {
       window.removeEventListener('resize', setViewportHeight);
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+      }
     };
   });
 </script>
@@ -348,18 +578,20 @@
 <main
   style="background: {currentTheme.gradients[currentGradientIndex]}"
   on:click={handleClick}
-  on:mousedown={handleDragStart}
-  on:mousemove={handleDragMove}
-  on:mouseup={handleDragEnd}
-  on:mouseleave={handleDragEnd}
-  on:touchstart={handleDragStart}
-  on:touchmove={handleDragMove}
-  on:touchend={handleDragEnd}
+  on:mousedown={handleBackgroundDragStart}
+  on:mousemove={handleGlobalDragMove}
+  on:mouseup={handleGlobalDragEnd}
+  on:mouseleave={handleGlobalDragEnd}
+  on:touchstart={handleBackgroundDragStart}
+  on:touchmove={handleGlobalDragMove}
+  on:touchend={handleGlobalDragEnd}
 >
-  {#each textItems as item, i (i)}
+  {#each textItems as item (item.id)}
     <h1
-      style="font-family: {fonts[item.fontIndex]}; color: {currentTheme.textColors[item.colorIndex]}; font-size: {item.fontSize}vh; left: {item.positionX}%; top: {item.positionY}%; transform: translate(-50%, -50%);"
-      class={animations[item.animationIndex]}
+      style="font-family: {fonts[item.fontIndex]}; color: {currentTheme.textColors[item.colorIndex]}; font-size: {item.fontSize}vh; left: {item.positionX}%; top: {item.positionY}%; transform: translate(-50%, -50%); {item.isDragging ? 'cursor: grabbing; z-index: 100;' : 'cursor: grab;'}"
+      class="{animations[item.animationIndex]} {item.isDragging ? 'dragging' : ''}"
+      on:mousedown={(e) => handleItemDragStart(e, item.id)}
+      on:touchstart={(e) => handleItemDragStart(e, item.id)}
     >
       {item.showSpecialMessage ? '사랑해' : (item.showMyu ? '뮤' : '먀')}{#if item.exclamationFirst}{item.showExclamation ? '!' : ''}{item.showQuestionMark ? '?' : ''}{:else}{item.showQuestionMark ? '?' : ''}{item.showExclamation ? '!' : ''}{/if}
     </h1>
@@ -411,5 +643,11 @@
 
   h1:active {
     transform: translate(-50%, -50%) scale(0.95);
+  }
+
+  h1.dragging {
+    animation: none !important;
+    transform: translate(-50%, -50%) scale(1.05);
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2));
   }
 </style>

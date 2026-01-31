@@ -36,7 +36,7 @@
   }
 
   // 잔상 설정
-  const TRAIL_LENGTH = 8;  // 잔상 개수 (느린 움직임에 맞게 증가)
+  const TRAIL_LENGTH = 12;  // 잔상 개수 (더 길게)
   const TRAIL_OPACITY_START = 0.35;  // 첫 번째 잔상 투명도
   const TRAIL_MIN_VELOCITY = 0.15;  // 잔상이 보이는 최소 속도 (느린 속도에서도 보이도록)
 
@@ -47,14 +47,14 @@
     y: number;
   }
 
-  // 먀/뮤 각각의 개수 확률 (0개: 20%, 1개: 50%, 2개: 20%, 3개: 10%)
-  const TEXT_TYPE_COUNT_PROBABILITIES = [0.2, 0.5, 0.2, 0.1];
+  // 먀/뮤 각각의 개수 확률 (0개: 15%, 1개: 40%, 2개: 25%, 3개: 12%, 4개: 5%, 5개: 3%)
+  const TEXT_TYPE_COUNT_PROBABILITIES = [0.15, 0.4, 0.25, 0.12, 0.05, 0.03];
   const TEXT_WIDTH_RATIO = 1.5;  // 글자 너비 비율 (줄임)
   const ANIMATION_MARGIN = 1;   // 애니메이션 여유 공간 (줄임)
   const COLLISION_PADDING = 0.5; // 충돌 박스 패딩 (vh 단위)
 
   // 디버깅 모드 (경계 박스 시각화)
-  const DEBUG_SHOW_BOUNDS = true;
+  const DEBUG_SHOW_BOUNDS = false;
 
   // 현재 테마 (새로고침 시 선택)
   let currentTheme: Theme = selectTheme();

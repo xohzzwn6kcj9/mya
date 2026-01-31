@@ -5,8 +5,8 @@ export const SINGLE_DAY_FONT_PROBABILITY = 0.3;
 export const COOKIE_EXPIRY_YEARS = 1;
 export const TARGET_DATE = '2025-05-19T19:00:00+09:00';
 
-// Font size range (vh units) - 10% 축소
-export const FONT_SIZE_MIN = 9;
+// Font size range (vh units)
+export const FONT_SIZE_MIN = 8;
 export const FONT_SIZE_MAX = 22;
 export const FONT_SIZE_DEFAULT = 16;
 

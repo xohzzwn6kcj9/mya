@@ -43,6 +43,9 @@
   let currentTheme: Theme = selectTheme();
   let currentGradientIndex = getRandomIndex(currentTheme.gradients.length);
 
+  // 텍스트 아이템 ID 카운터 (textItems 초기화 전에 선언 필요)
+  let nextItemId = 0;
+
   let textItems: TextItem[] = [{
     id: nextItemId++,
     fontIndex: getRandomIndex(fonts.length),
@@ -83,7 +86,6 @@
   let lastDragX = 0;  // 속도 계산용
   let lastDragY = 0;
   let lastDragTime = 0;
-  let nextItemId = 0;
 
   // 물리 시뮬레이션 활성화
   let animationFrameId: number | null = null;

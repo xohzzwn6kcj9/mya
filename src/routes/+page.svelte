@@ -74,18 +74,22 @@
   const HEART_THROTTLE_MS = 20; // 드래그 시 하트 생성 간격 (ms)
 
   // 물리 상수
-  const FRICTION = 0.985;  // 마찰 계수 (1에 가까울수록 덜 감속)
-  const MIN_VELOCITY = 0.1;  // 최소 속도 (이하면 정지)
-  const BOUNCE_DAMPING = 0.8;  // 벽 반사 시 에너지 손실
-  const THROW_MULTIPLIER = 0.8;  // 던질 때 속도 배수
+  const FRICTION = 0.997;  // 마찰 계수 (1에 가까울수록 덜 감속) - 낮은 마찰로 오래 미끄러짐
+  const MIN_VELOCITY = 0.05;  // 최소 속도 (이하면 정지) - 더 오래 움직임
+  const BOUNCE_DAMPING = 0.95;  // 벽 반사 시 에너지 손실 - 완전탄성충돌에 가까움
+  const THROW_MULTIPLIER = 2.5;  // 던질 때 속도 배수 - 강하게 던져짐
+  const COLLISION_RESTITUTION = 0.98;  // 글자간 충돌 반발계수 (완전탄성충돌에 가까움)
 
   // 글자 드래그 상태
   let draggedItemId: number | null = null;
   let dragOffsetX = 0;  // 드래그 시작 시 글자 중심과의 오프셋
   let dragOffsetY = 0;
-  let lastDragX = 0;  // 속도 계산용
-  let lastDragY = 0;
-  let lastDragTime = 0;
+
+  // 드래그 이력 (속도 계산용) - 최근 몇 개의 위치를 저장
+  interface DragPoint { x: number; y: number; time: number; }
+  let dragHistory: DragPoint[] = [];
+  const DRAG_HISTORY_SIZE = 5;  // 저장할 이력 개수
+  const DRAG_VELOCITY_WINDOW = 150;  // 속도 계산에 사용할 시간 윈도우 (ms)
 
   // 물리 시뮬레이션 활성화
   let animationFrameId: number | null = null;
@@ -392,9 +396,9 @@
     draggedItemId = itemId;
     dragOffsetX = coords.x - itemCenter.x;
     dragOffsetY = coords.y - itemCenter.y;
-    lastDragX = coords.x;
-    lastDragY = coords.y;
-    lastDragTime = Date.now();
+
+    // 드래그 이력 초기화
+    dragHistory = [{ x: coords.x, y: coords.y, time: Date.now() }];
 
     // 드래그 중인 아이템 상태 업데이트
     textItems = textItems.map(t =>
@@ -413,10 +417,7 @@
       if (!coords) return;
 
       const newPos = pixelToPercent(coords.x - dragOffsetX, coords.y - dragOffsetY);
-
-      // 속도 계산을 위한 시간 차이
       const now = Date.now();
-      const deltaTime = now - lastDragTime;
 
       textItems = textItems.map(t => {
         if (t.id === draggedItemId) {
@@ -425,53 +426,177 @@
         return t;
       });
 
-      // 속도 계산용 저장
-      lastDragX = coords.x;
-      lastDragY = coords.y;
-      lastDragTime = now;
+      // 드래그 이력에 추가 (최근 DRAG_HISTORY_SIZE개만 유지)
+      dragHistory.push({ x: coords.x, y: coords.y, time: now });
+      if (dragHistory.length > DRAG_HISTORY_SIZE) {
+        dragHistory.shift();
+      }
     } else {
       // 배경 드래그
       handleBackgroundDragMove(event);
     }
   }
 
+  // 드래그 이력에서 속도 계산 (가중 평균)
+  function calculateVelocityFromHistory(): { vx: number; vy: number } {
+    const now = Date.now();
+
+    // 시간 윈도우 내의 이력만 사용
+    const recentHistory = dragHistory.filter(p => now - p.time < DRAG_VELOCITY_WINDOW);
+
+    if (recentHistory.length < 2) {
+      return { vx: 0, vy: 0 };
+    }
+
+    // 가중 평균 속도 계산 (최근 움직임에 더 높은 가중치)
+    let totalVx = 0;
+    let totalVy = 0;
+    let totalWeight = 0;
+
+    for (let i = 1; i < recentHistory.length; i++) {
+      const p1 = recentHistory[i - 1];
+      const p2 = recentHistory[i];
+      const dt = Math.max(p2.time - p1.time, 1);
+
+      // 속도 (픽셀/ms)
+      const vx = (p2.x - p1.x) / dt;
+      const vy = (p2.y - p1.y) / dt;
+
+      // 최근일수록 높은 가중치 (지수 가중)
+      const weight = Math.pow(2, i);
+      totalVx += vx * weight;
+      totalVy += vy * weight;
+      totalWeight += weight;
+    }
+
+    if (totalWeight === 0) {
+      return { vx: 0, vy: 0 };
+    }
+
+    // 평균 속도 (픽셀/ms → 픽셀/프레임, 약 60fps = 16ms)
+    const avgVx = (totalVx / totalWeight) * 16;
+    const avgVy = (totalVy / totalWeight) * 16;
+
+    return { vx: avgVx, vy: avgVy };
+  }
+
   // 글자 드래그 종료 (전역)
   function handleGlobalDragEnd(event: MouseEvent | TouchEvent) {
     if (draggedItemId !== null) {
+      // 현재 위치도 이력에 추가
       const coords = getEventCoords(event);
-      const now = Date.now();
-      const deltaTime = Math.max(now - lastDragTime, 1); // 0 방지
-
-      if (coords && deltaTime < 100) {  // 100ms 이내의 움직임만 던지기로 처리
-        // 픽셀 단위 속도를 % 단위로 변환
-        const velocityXPixel = (coords.x - lastDragX) / deltaTime * 16;  // 약 60fps 기준
-        const velocityYPixel = (coords.y - lastDragY) / deltaTime * 16;
-
-        const velocityX = (velocityXPixel / window.innerWidth) * 100 * THROW_MULTIPLIER;
-        const velocityY = (velocityYPixel / window.innerHeight) * 100 * THROW_MULTIPLIER;
-
-        textItems = textItems.map(t =>
-          t.id === draggedItemId
-            ? { ...t, isDragging: false, velocityX, velocityY }
-            : t
-        );
-      } else {
-        textItems = textItems.map(t =>
-          t.id === draggedItemId
-            ? { ...t, isDragging: false }
-            : t
-        );
+      if (coords) {
+        dragHistory.push({ x: coords.x, y: coords.y, time: Date.now() });
       }
 
+      // 드래그 이력 기반 속도 계산
+      const { vx, vy } = calculateVelocityFromHistory();
+
+      // 픽셀 속도를 % 단위로 변환
+      const velocityX = (vx / window.innerWidth) * 100 * THROW_MULTIPLIER;
+      const velocityY = (vy / window.innerHeight) * 100 * THROW_MULTIPLIER;
+
+      // 최소 속도 이상일 때만 던지기 적용
+      const hasVelocity = Math.abs(velocityX) > MIN_VELOCITY || Math.abs(velocityY) > MIN_VELOCITY;
+
+      textItems = textItems.map(t =>
+        t.id === draggedItemId
+          ? { ...t, isDragging: false, velocityX: hasVelocity ? velocityX : 0, velocityY: hasVelocity ? velocityY : 0 }
+          : t
+      );
+
       draggedItemId = null;
+      dragHistory = [];  // 이력 초기화
     }
     handleBackgroundDragEnd();
+  }
+
+  // 글자의 충돌 반경 계산 (원형 근사)
+  function getCollisionRadius(item: TextItem): number {
+    const aspectRatio = window.innerWidth / window.innerHeight;
+    const heightVh = item.fontSize + ANIMATION_MARGIN;
+    const widthVh = item.fontSize * TEXT_WIDTH_RATIO + ANIMATION_MARGIN;
+    // 타원의 평균 반경 (원형 근사)
+    return (heightVh + widthVh / aspectRatio) / 4;
+  }
+
+  // 두 글자 사이 거리 계산 (vw/vh 혼합이므로 픽셀로 변환)
+  function getDistance(item1: TextItem, item2: TextItem): number {
+    const aspectRatio = window.innerWidth / window.innerHeight;
+    // vw%를 vh%로 변환해서 같은 단위로 비교
+    const dx = (item1.positionX - item2.positionX) * aspectRatio;
+    const dy = item1.positionY - item2.positionY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // 완전탄성충돌 처리 (2D 당구공 물리)
+  function resolveCollision(item1: TextItem, item2: TextItem): { vel1: {x: number, y: number}, vel2: {x: number, y: number} } {
+    const aspectRatio = window.innerWidth / window.innerHeight;
+
+    // 위치 차이 (vh 단위로 통일)
+    const dx = (item1.positionX - item2.positionX) * aspectRatio;
+    const dy = item1.positionY - item2.positionY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist === 0) {
+      // 완전히 겹친 경우 임의의 방향으로 밀어냄
+      return {
+        vel1: { x: item1.velocityX + 0.5, y: item1.velocityY },
+        vel2: { x: item2.velocityX - 0.5, y: item2.velocityY }
+      };
+    }
+
+    // 충돌 법선 벡터 (item1에서 item2 방향)
+    const nx = dx / dist;
+    const ny = dy / dist;
+
+    // 속도를 vh 단위로 변환
+    const v1x = item1.velocityX * aspectRatio;
+    const v1y = item1.velocityY;
+    const v2x = item2.velocityX * aspectRatio;
+    const v2y = item2.velocityY;
+
+    // 상대 속도
+    const dvx = v1x - v2x;
+    const dvy = v1y - v2y;
+
+    // 충돌 법선 방향 상대 속도
+    const dvn = dvx * nx + dvy * ny;
+
+    // 서로 멀어지고 있으면 충돌 처리 안함
+    if (dvn > 0) {
+      return {
+        vel1: { x: item1.velocityX, y: item1.velocityY },
+        vel2: { x: item2.velocityX, y: item2.velocityY }
+      };
+    }
+
+    // 질량은 fontSize에 비례 (큰 글자가 더 무거움)
+    const m1 = item1.fontSize;
+    const m2 = item2.fontSize;
+
+    // 완전탄성충돌 임펄스 계산
+    const impulse = (2 * dvn) / (m1 + m2) * COLLISION_RESTITUTION;
+
+    // 새 속도 계산 (vh 단위)
+    const newV1x = v1x - impulse * m2 * nx;
+    const newV1y = v1y - impulse * m2 * ny;
+    const newV2x = v2x + impulse * m1 * nx;
+    const newV2y = v2y + impulse * m1 * ny;
+
+    // vw 단위로 다시 변환
+    return {
+      vel1: { x: newV1x / aspectRatio, y: newV1y },
+      vel2: { x: newV2x / aspectRatio, y: newV2y }
+    };
   }
 
   // 물리 시뮬레이션 업데이트
   function updatePhysics() {
     let hasMovingItems = false;
+    const aspectRatio = window.innerWidth / window.innerHeight;
 
+    // 1단계: 위치 업데이트 및 벽 충돌 처리
     textItems = textItems.map(item => {
       if (item.isDragging) {
         hasMovingItems = true;
@@ -492,7 +617,6 @@
       let newVelY = item.velocityY * FRICTION;
 
       // 글자 크기 계산 (경계 반사용)
-      const aspectRatio = window.innerWidth / window.innerHeight;
       const halfHeightVh = item.fontSize / 2 + ANIMATION_MARGIN;
       const halfWidthVh = (item.fontSize * TEXT_WIDTH_RATIO) / 2 + ANIMATION_MARGIN;
       const halfWidthVw = halfWidthVh / aspectRatio;
@@ -523,6 +647,57 @@
         velocityY: newVelY
       };
     });
+
+    // 2단계: 글자간 충돌 감지 및 처리 (완전탄성충돌)
+    const updatedItems = [...textItems];
+    for (let i = 0; i < updatedItems.length; i++) {
+      for (let j = i + 1; j < updatedItems.length; j++) {
+        const item1 = updatedItems[i];
+        const item2 = updatedItems[j];
+
+        // 드래그 중인 아이템도 충돌 처리 (밀어내는 효과)
+        const r1 = getCollisionRadius(item1);
+        const r2 = getCollisionRadius(item2);
+        const dist = getDistance(item1, item2);
+
+        // 충돌 감지
+        if (dist < r1 + r2) {
+          // 충돌 시 속도 교환 (완전탄성충돌)
+          const { vel1, vel2 } = resolveCollision(item1, item2);
+
+          // 속도 업데이트
+          updatedItems[i] = { ...updatedItems[i], velocityX: vel1.x, velocityY: vel1.y };
+          updatedItems[j] = { ...updatedItems[j], velocityX: vel2.x, velocityY: vel2.y };
+
+          // 겹침 해소: 충돌 방향으로 서로 밀어냄
+          const overlap = r1 + r2 - dist;
+          if (overlap > 0 && dist > 0) {
+            const dx = (item1.positionX - item2.positionX) * aspectRatio;
+            const dy = item1.positionY - item2.positionY;
+            const nx = dx / dist;
+            const ny = dy / dist;
+
+            const totalMass = item1.fontSize + item2.fontSize;
+            const push1 = overlap * (item2.fontSize / totalMass) * 0.5;
+            const push2 = overlap * (item1.fontSize / totalMass) * 0.5;
+
+            updatedItems[i] = {
+              ...updatedItems[i],
+              positionX: updatedItems[i].positionX + (nx / aspectRatio) * push1,
+              positionY: updatedItems[i].positionY + ny * push1
+            };
+            updatedItems[j] = {
+              ...updatedItems[j],
+              positionX: updatedItems[j].positionX - (nx / aspectRatio) * push2,
+              positionY: updatedItems[j].positionY - ny * push2
+            };
+          }
+
+          hasMovingItems = true;
+        }
+      }
+    }
+    textItems = updatedItems;
 
     // 움직이는 아이템이 있으면 계속 애니메이션
     if (hasMovingItems) {

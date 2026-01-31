@@ -36,9 +36,9 @@
   }
 
   // 잔상 설정
-  const TRAIL_LENGTH = 6;  // 잔상 개수
-  const TRAIL_OPACITY_START = 0.4;  // 첫 번째 잔상 투명도
-  const TRAIL_MIN_VELOCITY = 0.3;  // 잔상이 보이는 최소 속도
+  const TRAIL_LENGTH = 8;  // 잔상 개수 (느린 움직임에 맞게 증가)
+  const TRAIL_OPACITY_START = 0.35;  // 첫 번째 잔상 투명도
+  const TRAIL_MIN_VELOCITY = 0.15;  // 잔상이 보이는 최소 속도 (느린 속도에서도 보이도록)
 
   // 하트 이펙트 타입
   interface HeartEffect {
@@ -92,11 +92,11 @@
   const HEART_THROTTLE_MS = 20; // 드래그 시 하트 생성 간격 (ms)
 
   // 물리 상수
-  const FRICTION = 0.92;  // 마찰 계수 (1에 가까울수록 덜 감속) - 높은 마찰로 자연스러운 정지
-  const MIN_VELOCITY = 0.08;  // 최소 속도 (이하면 정지)
-  const BOUNCE_DAMPING = 0.6;  // 벽 반사 시 에너지 손실 - 벽에 부딪히면 확 느려짐
-  const THROW_MULTIPLIER = 1.5;  // 던질 때 속도 배수 - 적당한 던지기
-  const COLLISION_RESTITUTION = 0.7;  // 글자간 충돌 반발계수 (에너지 손실 있음)
+  const FRICTION = 0.97;  // 마찰 계수 (1에 가까울수록 덜 감속) - 천천히 오래 움직임
+  const MIN_VELOCITY = 0.03;  // 최소 속도 (이하면 정지) - 더 오래 움직임
+  const BOUNCE_DAMPING = 0.5;  // 벽 반사 시 에너지 손실 - 벽에 부딪히면 확 느려짐
+  const THROW_MULTIPLIER = 0.8;  // 던질 때 속도 배수 - 느리게 던져짐
+  const COLLISION_RESTITUTION = 0.6;  // 글자간 충돌 반발계수 (에너지 손실 있음)
 
   // 글자 드래그 상태
   let draggedItemId: number | null = null;

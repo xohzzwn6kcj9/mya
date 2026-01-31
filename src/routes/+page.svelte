@@ -41,7 +41,7 @@
   const COLLISION_PADDING = 0.5; // 충돌 박스 패딩 (vh 단위)
 
   // 디버깅 모드 (경계 박스 시각화)
-  const DEBUG_SHOW_BOUNDS = false;
+  const DEBUG_SHOW_BOUNDS = true;
 
   // 현재 테마 (새로고침 시 선택)
   let currentTheme: Theme = selectTheme();

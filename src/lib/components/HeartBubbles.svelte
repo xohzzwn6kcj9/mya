@@ -5,7 +5,6 @@
     HEART_COUNT_MAX,
     HEART_SIZE_MIN,
     HEART_SIZE_MAX,
-    HEART_ANIMATION_DURATION,
     HEART_SPREAD_RADIUS
   } from '$lib/constants';
   import '$lib/styles/animations.css';
@@ -23,6 +22,7 @@
     size: number;
     color: string;
     delay: number;
+    duration: number;
   }
 
   let hearts: Heart[] = [];
@@ -45,7 +45,8 @@
         offsetY: Math.sin(angle) * distance,
         size: getRandomInRange(HEART_SIZE_MIN, HEART_SIZE_MAX),
         color: heartColors[Math.floor(Math.random() * heartColors.length)],
-        delay: Math.random() * 100
+        delay: Math.random() * 100,
+        duration: getRandomInRange(800, 1200)
       });
     }
 
@@ -57,7 +58,7 @@
 
     const timer = setTimeout(() => {
       dispatch('complete');
-    }, HEART_ANIMATION_DURATION + 150);
+    }, 1200 + 150); // 최대 duration + 여유
 
     return () => clearTimeout(timer);
   });
@@ -73,6 +74,7 @@
         font-size: {heart.size}px;
         color: {heart.color};
         animation-delay: {heart.delay}ms;
+        animation-duration: {heart.duration}ms;
       "
     >
       &#x2665;
@@ -89,7 +91,7 @@
 
   .heart {
     position: absolute;
-    animation: heart-bubble 800ms ease-out forwards;
+    animation: heart-bubble ease-out forwards;
     transform-origin: center center;
     text-shadow: 0 0 3px rgba(255, 255, 255, 0.5);
   }

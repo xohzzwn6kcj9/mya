@@ -95,8 +95,8 @@
   const FRICTION = 0.97;  // 마찰 계수 (1에 가까울수록 덜 감속) - 천천히 오래 움직임
   const MIN_VELOCITY = 0.03;  // 최소 속도 (이하면 정지) - 더 오래 움직임
   const BOUNCE_DAMPING = 0.5;  // 벽 반사 시 에너지 손실 - 벽에 부딪히면 확 느려짐
-  const THROW_MULTIPLIER = 0.8;  // 던질 때 속도 배수 - 느리게 던져짐
-  const COLLISION_RESTITUTION = 0.6;  // 글자간 충돌 반발계수 (에너지 손실 있음)
+  const THROW_MULTIPLIER = 1.2;  // 던질 때 속도 배수 - 빠르게 던져짐
+  const COLLISION_RESTITUTION = 0.7;  // 글자간 충돌 반발계수 (0 = 비탄성, 1 = 완전탄성)
 
   // 글자 드래그 상태
   let draggedItemId: number | null = null;
@@ -602,7 +602,7 @@
     return { colliding: false, overlapX: 0, overlapY: 0, normalX: 0, normalY: 0 };
   }
 
-  // AABB 기반 완전탄성충돌 처리
+  // AABB 기반 비탄성 충돌 처리 (질량은 글자 크기의 제곱에 비례 - 면적 기반)
   function resolveAABBCollision(
     item1: TextItem,
     item2: TextItem,
@@ -615,12 +615,13 @@
   } {
     const { normalX, normalY, overlapX, overlapY } = collision;
 
-    // 질량은 fontSize에 비례
-    const m1 = item1.fontSize;
-    const m2 = item2.fontSize;
+    // 질량은 fontSize의 제곱에 비례 (면적 기반 - 큰 글자가 훨씬 무거움)
+    const m1 = item1.fontSize * item1.fontSize;
+    const m2 = item2.fontSize * item2.fontSize;
     const totalMass = m1 + m2;
+    const e = COLLISION_RESTITUTION;  // 반발계수
 
-    // 겹침 해소
+    // 겹침 해소 (질량에 반비례하여 밀어냄 - 무거운 글자는 적게 밀림)
     let newPos1X = item1.positionX;
     let newPos1Y = item1.positionY;
     let newPos2X = item2.positionX;
@@ -640,7 +641,7 @@
       newPos2Y -= normalY * push2;
     }
 
-    // 속도 교환 (충돌 축 방향만)
+    // 속도 교환 (충돌 축 방향만 - 비탄성 충돌 공식)
     let newVel1X = item1.velocityX;
     let newVel1Y = item1.velocityY;
     let newVel2X = item2.velocityX;
@@ -653,9 +654,9 @@
 
       // 서로 가까워지는 경우에만 충돌 처리
       if ((normalX > 0 && v1 < v2) || (normalX < 0 && v1 > v2)) {
-        // 1D 완전탄성충돌 공식
-        newVel1X = ((m1 - m2) * v1 + 2 * m2 * v2) / totalMass * COLLISION_RESTITUTION;
-        newVel2X = ((m2 - m1) * v2 + 2 * m1 * v1) / totalMass * COLLISION_RESTITUTION;
+        // 비탄성 충돌 공식: v1' = ((m1 - e*m2)*v1 + (1+e)*m2*v2) / (m1+m2)
+        newVel1X = ((m1 - e * m2) * v1 + (1 + e) * m2 * v2) / totalMass;
+        newVel2X = ((m2 - e * m1) * v2 + (1 + e) * m1 * v1) / totalMass;
       }
     } else {
       // Y축 충돌 - Y 속도 교환
@@ -664,8 +665,9 @@
 
       // 서로 가까워지는 경우에만 충돌 처리
       if ((normalY > 0 && v1 < v2) || (normalY < 0 && v1 > v2)) {
-        newVel1Y = ((m1 - m2) * v1 + 2 * m2 * v2) / totalMass * COLLISION_RESTITUTION;
-        newVel2Y = ((m2 - m1) * v2 + 2 * m1 * v1) / totalMass * COLLISION_RESTITUTION;
+        // 비탄성 충돌 공식: v1' = ((m1 - e*m2)*v1 + (1+e)*m2*v2) / (m1+m2)
+        newVel1Y = ((m1 - e * m2) * v1 + (1 + e) * m2 * v2) / totalMass;
+        newVel2Y = ((m2 - e * m1) * v2 + (1 + e) * m1 * v1) / totalMass;
       }
     }
 

@@ -5,10 +5,10 @@ export const SINGLE_DAY_FONT_PROBABILITY = 0.3;
 export const COOKIE_EXPIRY_YEARS = 1;
 export const TARGET_DATE = '2025-05-19T19:00:00+09:00';
 
-// Font size range (vh units)
-export const FONT_SIZE_MIN = 10;
-export const FONT_SIZE_MAX = 25;
-export const FONT_SIZE_DEFAULT = 18;
+// Font size range (vh units) - 10% 축소
+export const FONT_SIZE_MIN = 9;
+export const FONT_SIZE_MAX = 22;
+export const FONT_SIZE_DEFAULT = 16;
 
 // Heart bubble effect
 export const HEART_COUNT_MIN = 3;

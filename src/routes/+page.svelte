@@ -41,7 +41,7 @@
   const COLLISION_PADDING = 0.5; // 충돌 박스 패딩 (vh 단위)
 
   // 디버깅 모드 (경계 박스 시각화)
-  const DEBUG_SHOW_BOUNDS = true;
+  const DEBUG_SHOW_BOUNDS = false;
 
   // 현재 테마 (새로고침 시 선택)
   let currentTheme: Theme = selectTheme();
@@ -78,7 +78,7 @@
   const HEART_THROTTLE_MS = 20; // 드래그 시 하트 생성 간격 (ms)
 
   // 물리 상수
-  const FRICTION = 0.997;  // 마찰 계수 (1에 가까울수록 덜 감속) - 낮은 마찰로 오래 미끄러짐
+  const FRICTION = 0.985;  // 마찰 계수 (1에 가까울수록 덜 감속) - 적당한 마찰
   const MIN_VELOCITY = 0.05;  // 최소 속도 (이하면 정지) - 더 오래 움직임
   const BOUNCE_DAMPING = 0.95;  // 벽 반사 시 에너지 손실 - 완전탄성충돌에 가까움
   const THROW_MULTIPLIER = 2.5;  // 던질 때 속도 배수 - 강하게 던져짐
@@ -869,7 +869,8 @@
   h1 {
     margin: 0;
     user-select: none;
-    transition: all 0.2s ease;
+    /* 위치 이동은 물리 엔진이 직접 제어하므로 transition 제외 */
+    transition: color 0.2s ease, filter 0.2s ease;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
     white-space: nowrap;
     text-align: center;

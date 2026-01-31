@@ -8,6 +8,13 @@
   import '$lib/styles/animations.css';
   import HeartBubbles from '$lib/components/HeartBubbles.svelte';
 
+  // 잔상 위치 타입
+  interface TrailPosition {
+    x: number;
+    y: number;
+    opacity: number;
+  }
+
   // 텍스트 아이템 타입
   interface TextItem {
     id: number;
@@ -25,7 +32,13 @@
     showExclamation: boolean;
     showQuestionMark: boolean;
     exclamationFirst: boolean;  // !?와 ?! 순서 결정
+    trail: TrailPosition[];  // 잔상 효과용 이전 위치들
   }
+
+  // 잔상 설정
+  const TRAIL_LENGTH = 6;  // 잔상 개수
+  const TRAIL_OPACITY_START = 0.4;  // 첫 번째 잔상 투명도
+  const TRAIL_MIN_VELOCITY = 0.3;  // 잔상이 보이는 최소 속도
 
   // 하트 이펙트 타입
   interface HeartEffect {
@@ -65,7 +78,8 @@
     showMyu: false,
     showExclamation: false,
     showQuestionMark: false,
-    exclamationFirst: true
+    exclamationFirst: true,
+    trail: []
   }];
 
   // 하트 이펙트 상태
@@ -78,11 +92,11 @@
   const HEART_THROTTLE_MS = 20; // 드래그 시 하트 생성 간격 (ms)
 
   // 물리 상수
-  const FRICTION = 0.985;  // 마찰 계수 (1에 가까울수록 덜 감속) - 적당한 마찰
-  const MIN_VELOCITY = 0.05;  // 최소 속도 (이하면 정지) - 더 오래 움직임
-  const BOUNCE_DAMPING = 0.95;  // 벽 반사 시 에너지 손실 - 완전탄성충돌에 가까움
-  const THROW_MULTIPLIER = 2.5;  // 던질 때 속도 배수 - 강하게 던져짐
-  const COLLISION_RESTITUTION = 0.98;  // 글자간 충돌 반발계수 (완전탄성충돌에 가까움)
+  const FRICTION = 0.92;  // 마찰 계수 (1에 가까울수록 덜 감속) - 높은 마찰로 자연스러운 정지
+  const MIN_VELOCITY = 0.08;  // 최소 속도 (이하면 정지)
+  const BOUNCE_DAMPING = 0.6;  // 벽 반사 시 에너지 손실 - 벽에 부딪히면 확 느려짐
+  const THROW_MULTIPLIER = 1.5;  // 던질 때 속도 배수 - 적당한 던지기
+  const COLLISION_RESTITUTION = 0.7;  // 글자간 충돌 반발계수 (에너지 손실 있음)
 
   // 글자 드래그 상태
   let draggedItemId: number | null = null;
@@ -268,7 +282,8 @@
         showMyu,
         showExclamation,
         showQuestionMark,
-        exclamationFirst
+        exclamationFirst,
+        trail: []
       };
 
       // 겹침 확인
@@ -450,9 +465,20 @@
       const newPos = pixelToPercent(coords.x - dragOffsetX, coords.y - dragOffsetY);
       const now = Date.now();
 
+      // 드래그 중 속도 계산 (잔상 효과용)
+      let dragVelX = 0;
+      let dragVelY = 0;
+      if (dragHistory.length > 0) {
+        const lastPoint = dragHistory[dragHistory.length - 1];
+        const dt = Math.max(now - lastPoint.time, 1);
+        // 픽셀 속도를 % 단위로 변환
+        dragVelX = ((coords.x - lastPoint.x) / dt) * 16 / window.innerWidth * 100;
+        dragVelY = ((coords.y - lastPoint.y) / dt) * 16 / window.innerHeight * 100;
+      }
+
       textItems = textItems.map(t => {
         if (t.id === draggedItemId) {
-          return { ...t, positionX: newPos.x, positionY: newPos.y };
+          return { ...t, positionX: newPos.x, positionY: newPos.y, velocityX: dragVelX, velocityY: dragVelY };
         }
         return t;
       });
@@ -651,6 +677,35 @@
     };
   }
 
+  // 잔상 업데이트 함수
+  function updateTrail(item: TextItem, newX: number, newY: number): TrailPosition[] {
+    const speed = Math.sqrt(item.velocityX * item.velocityX + item.velocityY * item.velocityY);
+
+    // 속도가 충분히 빠를 때만 잔상 추가
+    if (speed > TRAIL_MIN_VELOCITY) {
+      // 현재 위치를 잔상으로 추가 (앞에 추가)
+      const newTrail: TrailPosition[] = [
+        { x: item.positionX, y: item.positionY, opacity: TRAIL_OPACITY_START },
+        ...item.trail
+      ];
+
+      // 잔상 개수 제한 및 투명도 감소
+      return newTrail.slice(0, TRAIL_LENGTH).map((t, i) => ({
+        ...t,
+        opacity: TRAIL_OPACITY_START * (1 - (i + 1) / (TRAIL_LENGTH + 1))
+      }));
+    }
+
+    // 속도가 느리면 잔상 점점 제거 (페이드 아웃)
+    if (item.trail.length > 0) {
+      return item.trail
+        .map(t => ({ ...t, opacity: t.opacity * 0.7 }))
+        .filter(t => t.opacity > 0.02);
+    }
+
+    return [];
+  }
+
   // 물리 시뮬레이션 업데이트
   function updatePhysics() {
     let hasMovingItems = false;
@@ -660,12 +715,18 @@
     textItems = textItems.map(item => {
       if (item.isDragging) {
         hasMovingItems = true;
-        return item;
+        // 드래그 중에도 잔상 업데이트
+        const newTrail = updateTrail(item, item.positionX, item.positionY);
+        return { ...item, trail: newTrail };
       }
 
       // 속도가 충분히 작으면 정지
       if (Math.abs(item.velocityX) < MIN_VELOCITY && Math.abs(item.velocityY) < MIN_VELOCITY) {
-        return { ...item, velocityX: 0, velocityY: 0 };
+        // 정지 시 잔상 페이드 아웃
+        const fadingTrail = item.trail
+          .map(t => ({ ...t, opacity: t.opacity * 0.5 }))
+          .filter(t => t.opacity > 0.02);
+        return { ...item, velocityX: 0, velocityY: 0, trail: fadingTrail };
       }
 
       hasMovingItems = true;
@@ -699,12 +760,16 @@
         newVelY = -newVelY * BOUNCE_DAMPING;
       }
 
+      // 잔상 업데이트
+      const newTrail = updateTrail(item, newX, newY);
+
       return {
         ...item,
         positionX: newX,
         positionY: newY,
         velocityX: newVelX,
-        velocityY: newVelY
+        velocityY: newVelY,
+        trail: newTrail
       };
     });
 
@@ -747,8 +812,9 @@
     }
     textItems = updatedItems;
 
-    // 움직이는 아이템이 있으면 계속 애니메이션
-    if (hasMovingItems) {
+    // 움직이는 아이템이나 잔상이 있으면 계속 애니메이션
+    const hasTrails = textItems.some(t => t.trail.length > 0);
+    if (hasMovingItems || hasTrails) {
       animationFrameId = requestAnimationFrame(updatePhysics);
     } else {
       animationFrameId = null;
@@ -763,7 +829,7 @@
   }
 
   // textItems가 변경될 때마다 물리 시뮬레이션 확인
-  $: if (textItems.some(t => t.velocityX !== 0 || t.velocityY !== 0 || t.isDragging)) {
+  $: if (textItems.some(t => t.velocityX !== 0 || t.velocityY !== 0 || t.isDragging || t.trail.length > 0)) {
     startPhysicsIfNeeded();
   }
 
@@ -817,6 +883,23 @@
   {/if}
 
   {#each textItems as item (item.id)}
+    <!-- 잔상 효과 렌더링 -->
+    {#each item.trail as trailPos, i (i)}
+      <span
+        class="trail-ghost"
+        style="
+          font-family: {fonts[item.fontIndex]};
+          color: {currentTheme.textColors[item.colorIndex]};
+          font-size: {item.fontSize}vh;
+          left: {trailPos.x}%;
+          top: {trailPos.y}%;
+          opacity: {trailPos.opacity};
+          transform: translate(-50%, -50%) scale({1 - (i + 1) * 0.05});
+        "
+      >
+        {item.showSpecialMessage ? '사랑해' : (item.showMyu ? '뮤' : '먀')}{#if item.exclamationFirst}{item.showExclamation ? '!' : ''}{item.showQuestionMark ? '?' : ''}{:else}{item.showQuestionMark ? '?' : ''}{item.showExclamation ? '!' : ''}{/if}
+      </span>
+    {/each}
     <!-- 디버깅: 각 글자의 충돌 박스 표시 -->
     {#if DEBUG_SHOW_BOUNDS}
       {@const box = getBoundingBox(item)}
@@ -888,6 +971,19 @@
     animation: none !important;
     transform: translate(-50%, -50%) scale(1.05);
     filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2));
+  }
+
+  /* 잔상 효과 스타일 */
+  .trail-ghost {
+    position: absolute;
+    margin: 0;
+    user-select: none;
+    pointer-events: none;
+    white-space: nowrap;
+    text-align: center;
+    transform-origin: center center;
+    filter: blur(1px);
+    z-index: 1;
   }
 
   /* 디버깅용 화면 경계 박스 */

@@ -57,8 +57,18 @@
   let heartEffects: HeartEffect[] = [];
   let nextHeartId = 0;
 
+  // 드래그 상태 추적
+  let isDragging = false;
+  let lastHeartTime = 0;
+  const HEART_THROTTLE_MS = 80; // 드래그 시 하트 생성 간격 (ms)
+
   function removeHeartEffect(id: number) {
     heartEffects = heartEffects.filter(effect => effect.id !== id);
+  }
+
+  // 하트만 생성하는 함수 (드래그용)
+  function createHeartAtPosition(clientX: number, clientY: number) {
+    heartEffects = [...heartEffects, { id: nextHeartId++, x: clientX, y: clientY }];
   }
 
   // 먀 또는 뮤의 개수 결정 (0~3개)
@@ -272,6 +282,39 @@
     textItems = newItems;
   }
 
+  // 드래그 시작
+  function handleDragStart(event: MouseEvent | TouchEvent) {
+    isDragging = true;
+    lastHeartTime = Date.now();
+  }
+
+  // 드래그 중 하트 생성
+  function handleDragMove(event: MouseEvent | TouchEvent) {
+    if (!isDragging) return;
+
+    const now = Date.now();
+    if (now - lastHeartTime < HEART_THROTTLE_MS) return;
+    lastHeartTime = now;
+
+    let clientX: number, clientY: number;
+    if ('touches' in event && event.touches.length > 0) {
+      clientX = event.touches[0].clientX;
+      clientY = event.touches[0].clientY;
+    } else if ('clientX' in event) {
+      clientX = (event as MouseEvent).clientX;
+      clientY = (event as MouseEvent).clientY;
+    } else {
+      return;
+    }
+
+    createHeartAtPosition(clientX, clientY);
+  }
+
+  // 드래그 종료
+  function handleDragEnd() {
+    isDragging = false;
+  }
+
   onMount(() => {
     // 뷰포트 높이 설정 (모바일 브라우저 대응)
     function setViewportHeight() {
@@ -305,6 +348,13 @@
 <main
   style="background: {currentTheme.gradients[currentGradientIndex]}"
   on:click={handleClick}
+  on:mousedown={handleDragStart}
+  on:mousemove={handleDragMove}
+  on:mouseup={handleDragEnd}
+  on:mouseleave={handleDragEnd}
+  on:touchstart={handleDragStart}
+  on:touchmove={handleDragMove}
+  on:touchend={handleDragEnd}
 >
   {#each textItems as item, i (i)}
     <h1

@@ -36,8 +36,12 @@
 
   // 먀/뮤 각각의 개수 확률 (0개: 20%, 1개: 50%, 2개: 20%, 3개: 10%)
   const TEXT_TYPE_COUNT_PROBABILITIES = [0.2, 0.5, 0.2, 0.1];
-  const TEXT_WIDTH_RATIO = 2;
-  const ANIMATION_MARGIN = 5;
+  const TEXT_WIDTH_RATIO = 1.5;  // 글자 너비 비율 (줄임)
+  const ANIMATION_MARGIN = 1;   // 애니메이션 여유 공간 (줄임)
+  const COLLISION_PADDING = 0.5; // 충돌 박스 패딩 (vh 단위)
+
+  // 디버깅 모드 (경계 박스 시각화)
+  const DEBUG_SHOW_BOUNDS = true;
 
   // 현재 테마 (새로고침 시 선택)
   let currentTheme: Theme = selectTheme();
@@ -120,14 +124,37 @@
     right: number;  // vw %
     top: number;    // vh %
     bottom: number; // vh %
+    width: number;  // vw %
+    height: number; // vh %
+    centerX: number; // vw %
+    centerY: number; // vh %
   }
 
-  // 텍스트 아이템의 경계 박스 계산 (애니메이션 여유 포함)
+  // 텍스트 아이템의 경계 박스 계산 (충돌용 - 타이트한 박스)
   function getBoundingBox(item: TextItem): BoundingBox {
     const aspectRatio = window.innerWidth / window.innerHeight;
-    // 텍스트 높이 (vh %)
+    // 텍스트 높이 (vh %) - 충돌 패딩만 추가
+    const heightVh = item.fontSize + COLLISION_PADDING * 2;
+    // 텍스트 너비 (vh → vw % 변환) - 충돌 패딩만 추가
+    const widthVh = item.fontSize * TEXT_WIDTH_RATIO + COLLISION_PADDING * 2;
+    const widthVw = widthVh / aspectRatio;
+
+    return {
+      left: item.positionX - widthVw / 2,
+      right: item.positionX + widthVw / 2,
+      top: item.positionY - heightVh / 2,
+      bottom: item.positionY + heightVh / 2,
+      width: widthVw,
+      height: heightVh,
+      centerX: item.positionX,
+      centerY: item.positionY
+    };
+  }
+
+  // 벽 충돌용 경계 박스 (애니메이션 마진 포함)
+  function getWallBoundingBox(item: TextItem): BoundingBox {
+    const aspectRatio = window.innerWidth / window.innerHeight;
     const heightVh = item.fontSize + ANIMATION_MARGIN * 2;
-    // 텍스트 너비 (vh → vw % 변환)
     const widthVh = item.fontSize * TEXT_WIDTH_RATIO + ANIMATION_MARGIN * 2;
     const widthVw = widthVh / aspectRatio;
 
@@ -135,7 +162,11 @@
       left: item.positionX - widthVw / 2,
       right: item.positionX + widthVw / 2,
       top: item.positionY - heightVh / 2,
-      bottom: item.positionY + heightVh / 2
+      bottom: item.positionY + heightVh / 2,
+      width: widthVw,
+      height: heightVh,
+      centerX: item.positionX,
+      centerY: item.positionY
     };
   }
 
@@ -511,83 +542,112 @@
     handleBackgroundDragEnd();
   }
 
-  // 글자의 충돌 반경 계산 (원형 근사)
-  function getCollisionRadius(item: TextItem): number {
-    const aspectRatio = window.innerWidth / window.innerHeight;
-    const heightVh = item.fontSize + ANIMATION_MARGIN;
-    const widthVh = item.fontSize * TEXT_WIDTH_RATIO + ANIMATION_MARGIN;
-    // 타원의 평균 반경 (원형 근사)
-    return (heightVh + widthVh / aspectRatio) / 4;
-  }
+  // AABB 충돌 감지 및 겹침 정보 반환
+  function checkAABBCollision(box1: BoundingBox, box2: BoundingBox): {
+    colliding: boolean;
+    overlapX: number;
+    overlapY: number;
+    normalX: number;
+    normalY: number;
+  } {
+    const overlapX = Math.min(box1.right, box2.right) - Math.max(box1.left, box2.left);
+    const overlapY = Math.min(box1.bottom, box2.bottom) - Math.max(box1.top, box2.top);
 
-  // 두 글자 사이 거리 계산 (vw/vh 혼합이므로 픽셀로 변환)
-  function getDistance(item1: TextItem, item2: TextItem): number {
-    const aspectRatio = window.innerWidth / window.innerHeight;
-    // vw%를 vh%로 변환해서 같은 단위로 비교
-    const dx = (item1.positionX - item2.positionX) * aspectRatio;
-    const dy = item1.positionY - item2.positionY;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
+    if (overlapX > 0 && overlapY > 0) {
+      // 충돌 법선 방향 결정 (최소 겹침 축 방향)
+      const aspectRatio = window.innerWidth / window.innerHeight;
+      // vw를 vh로 변환해서 비교
+      const overlapXInVh = overlapX * aspectRatio;
 
-  // 완전탄성충돌 처리 (2D 당구공 물리)
-  function resolveCollision(item1: TextItem, item2: TextItem): { vel1: {x: number, y: number}, vel2: {x: number, y: number} } {
-    const aspectRatio = window.innerWidth / window.innerHeight;
+      let normalX = 0;
+      let normalY = 0;
 
-    // 위치 차이 (vh 단위로 통일)
-    const dx = (item1.positionX - item2.positionX) * aspectRatio;
-    const dy = item1.positionY - item2.positionY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+      if (overlapXInVh < overlapY) {
+        // X축 방향 충돌
+        normalX = box1.centerX < box2.centerX ? -1 : 1;
+      } else {
+        // Y축 방향 충돌
+        normalY = box1.centerY < box2.centerY ? -1 : 1;
+      }
 
-    if (dist === 0) {
-      // 완전히 겹친 경우 임의의 방향으로 밀어냄
-      return {
-        vel1: { x: item1.velocityX + 0.5, y: item1.velocityY },
-        vel2: { x: item2.velocityX - 0.5, y: item2.velocityY }
-      };
+      return { colliding: true, overlapX, overlapY, normalX, normalY };
     }
 
-    // 충돌 법선 벡터 (item1에서 item2 방향)
-    const nx = dx / dist;
-    const ny = dy / dist;
+    return { colliding: false, overlapX: 0, overlapY: 0, normalX: 0, normalY: 0 };
+  }
 
-    // 속도를 vh 단위로 변환
-    const v1x = item1.velocityX * aspectRatio;
-    const v1y = item1.velocityY;
-    const v2x = item2.velocityX * aspectRatio;
-    const v2y = item2.velocityY;
+  // AABB 기반 완전탄성충돌 처리
+  function resolveAABBCollision(
+    item1: TextItem,
+    item2: TextItem,
+    collision: { overlapX: number; overlapY: number; normalX: number; normalY: number }
+  ): {
+    vel1: {x: number, y: number},
+    vel2: {x: number, y: number},
+    pos1: {x: number, y: number},
+    pos2: {x: number, y: number}
+  } {
+    const { normalX, normalY, overlapX, overlapY } = collision;
 
-    // 상대 속도
-    const dvx = v1x - v2x;
-    const dvy = v1y - v2y;
-
-    // 충돌 법선 방향 상대 속도
-    const dvn = dvx * nx + dvy * ny;
-
-    // 서로 멀어지고 있으면 충돌 처리 안함
-    if (dvn > 0) {
-      return {
-        vel1: { x: item1.velocityX, y: item1.velocityY },
-        vel2: { x: item2.velocityX, y: item2.velocityY }
-      };
-    }
-
-    // 질량은 fontSize에 비례 (큰 글자가 더 무거움)
+    // 질량은 fontSize에 비례
     const m1 = item1.fontSize;
     const m2 = item2.fontSize;
+    const totalMass = m1 + m2;
 
-    // 완전탄성충돌 임펄스 계산
-    const impulse = (2 * dvn) / (m1 + m2) * COLLISION_RESTITUTION;
+    // 겹침 해소
+    let newPos1X = item1.positionX;
+    let newPos1Y = item1.positionY;
+    let newPos2X = item2.positionX;
+    let newPos2Y = item2.positionY;
 
-    // 새 속도 계산 (vh 단위)
-    const newV1x = v1x - impulse * m2 * nx;
-    const newV1y = v1y - impulse * m2 * ny;
-    const newV2x = v2x + impulse * m1 * nx;
-    const newV2y = v2y + impulse * m1 * ny;
+    if (normalX !== 0) {
+      // X축 분리
+      const push1 = overlapX * (m2 / totalMass) * 0.5;
+      const push2 = overlapX * (m1 / totalMass) * 0.5;
+      newPos1X += normalX * push1;
+      newPos2X -= normalX * push2;
+    } else {
+      // Y축 분리
+      const push1 = overlapY * (m2 / totalMass) * 0.5;
+      const push2 = overlapY * (m1 / totalMass) * 0.5;
+      newPos1Y += normalY * push1;
+      newPos2Y -= normalY * push2;
+    }
 
-    // vw 단위로 다시 변환
+    // 속도 교환 (충돌 축 방향만)
+    let newVel1X = item1.velocityX;
+    let newVel1Y = item1.velocityY;
+    let newVel2X = item2.velocityX;
+    let newVel2Y = item2.velocityY;
+
+    if (normalX !== 0) {
+      // X축 충돌 - X 속도 교환
+      const v1 = item1.velocityX;
+      const v2 = item2.velocityX;
+
+      // 서로 가까워지는 경우에만 충돌 처리
+      if ((normalX > 0 && v1 < v2) || (normalX < 0 && v1 > v2)) {
+        // 1D 완전탄성충돌 공식
+        newVel1X = ((m1 - m2) * v1 + 2 * m2 * v2) / totalMass * COLLISION_RESTITUTION;
+        newVel2X = ((m2 - m1) * v2 + 2 * m1 * v1) / totalMass * COLLISION_RESTITUTION;
+      }
+    } else {
+      // Y축 충돌 - Y 속도 교환
+      const v1 = item1.velocityY;
+      const v2 = item2.velocityY;
+
+      // 서로 가까워지는 경우에만 충돌 처리
+      if ((normalY > 0 && v1 < v2) || (normalY < 0 && v1 > v2)) {
+        newVel1Y = ((m1 - m2) * v1 + 2 * m2 * v2) / totalMass * COLLISION_RESTITUTION;
+        newVel2Y = ((m2 - m1) * v2 + 2 * m1 * v1) / totalMass * COLLISION_RESTITUTION;
+      }
+    }
+
     return {
-      vel1: { x: newV1x / aspectRatio, y: newV1y },
-      vel2: { x: newV2x / aspectRatio, y: newV2y }
+      vel1: { x: newVel1X, y: newVel1Y },
+      vel2: { x: newVel2X, y: newVel2Y },
+      pos1: { x: newPos1X, y: newPos1Y },
+      pos2: { x: newPos2X, y: newPos2Y }
     };
   }
 
@@ -648,50 +708,38 @@
       };
     });
 
-    // 2단계: 글자간 충돌 감지 및 처리 (완전탄성충돌)
+    // 2단계: 글자간 충돌 감지 및 처리 (AABB 충돌)
     const updatedItems = [...textItems];
     for (let i = 0; i < updatedItems.length; i++) {
       for (let j = i + 1; j < updatedItems.length; j++) {
         const item1 = updatedItems[i];
         const item2 = updatedItems[j];
 
-        // 드래그 중인 아이템도 충돌 처리 (밀어내는 효과)
-        const r1 = getCollisionRadius(item1);
-        const r2 = getCollisionRadius(item2);
-        const dist = getDistance(item1, item2);
+        // AABB 충돌 감지
+        const box1 = getBoundingBox(item1);
+        const box2 = getBoundingBox(item2);
+        const collision = checkAABBCollision(box1, box2);
 
         // 충돌 감지
-        if (dist < r1 + r2) {
-          // 충돌 시 속도 교환 (완전탄성충돌)
-          const { vel1, vel2 } = resolveCollision(item1, item2);
+        if (collision.colliding) {
+          // AABB 충돌 해결
+          const result = resolveAABBCollision(item1, item2, collision);
 
-          // 속도 업데이트
-          updatedItems[i] = { ...updatedItems[i], velocityX: vel1.x, velocityY: vel1.y };
-          updatedItems[j] = { ...updatedItems[j], velocityX: vel2.x, velocityY: vel2.y };
-
-          // 겹침 해소: 충돌 방향으로 서로 밀어냄
-          const overlap = r1 + r2 - dist;
-          if (overlap > 0 && dist > 0) {
-            const dx = (item1.positionX - item2.positionX) * aspectRatio;
-            const dy = item1.positionY - item2.positionY;
-            const nx = dx / dist;
-            const ny = dy / dist;
-
-            const totalMass = item1.fontSize + item2.fontSize;
-            const push1 = overlap * (item2.fontSize / totalMass) * 0.5;
-            const push2 = overlap * (item1.fontSize / totalMass) * 0.5;
-
-            updatedItems[i] = {
-              ...updatedItems[i],
-              positionX: updatedItems[i].positionX + (nx / aspectRatio) * push1,
-              positionY: updatedItems[i].positionY + ny * push1
-            };
-            updatedItems[j] = {
-              ...updatedItems[j],
-              positionX: updatedItems[j].positionX - (nx / aspectRatio) * push2,
-              positionY: updatedItems[j].positionY - ny * push2
-            };
-          }
+          // 속도 및 위치 업데이트
+          updatedItems[i] = {
+            ...updatedItems[i],
+            velocityX: result.vel1.x,
+            velocityY: result.vel1.y,
+            positionX: result.pos1.x,
+            positionY: result.pos1.y
+          };
+          updatedItems[j] = {
+            ...updatedItems[j],
+            velocityX: result.vel2.x,
+            velocityY: result.vel2.y,
+            positionX: result.pos2.x,
+            positionY: result.pos2.y
+          };
 
           hasMovingItems = true;
         }
@@ -763,7 +811,20 @@
   on:touchmove={handleGlobalDragMove}
   on:touchend={handleGlobalDragEnd}
 >
+  <!-- 디버깅: 화면 경계 표시 -->
+  {#if DEBUG_SHOW_BOUNDS}
+    <div class="debug-screen-boundary"></div>
+  {/if}
+
   {#each textItems as item (item.id)}
+    <!-- 디버깅: 각 글자의 충돌 박스 표시 -->
+    {#if DEBUG_SHOW_BOUNDS}
+      {@const box = getBoundingBox(item)}
+      <div
+        class="debug-collision-box"
+        style="left: {box.left}%; top: {box.top}%; width: {box.width}%; height: {box.height}%;"
+      ></div>
+    {/if}
     <h1
       style="font-family: {fonts[item.fontIndex]}; color: {currentTheme.textColors[item.colorIndex]}; font-size: {item.fontSize}vh; left: {item.positionX}%; top: {item.positionY}%; transform: translate(-50%, -50%); {item.isDragging ? 'cursor: grabbing; z-index: 100;' : 'cursor: grab;'}"
       class="{animations[item.animationIndex]} {item.isDragging ? 'dragging' : ''}"
@@ -826,5 +887,28 @@
     animation: none !important;
     transform: translate(-50%, -50%) scale(1.05);
     filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2));
+  }
+
+  /* 디버깅용 화면 경계 박스 */
+  .debug-screen-boundary {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 3px solid rgba(255, 0, 0, 0.7);
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* 디버깅용 충돌 박스 */
+  .debug-collision-box {
+    position: absolute;
+    border: 2px solid rgba(0, 255, 0, 0.8);
+    background-color: rgba(0, 255, 0, 0.1);
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 999;
   }
 </style>

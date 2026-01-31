@@ -60,7 +60,7 @@
   // 드래그 상태 추적
   let isDragging = false;
   let lastHeartTime = 0;
-  const HEART_THROTTLE_MS = 80; // 드래그 시 하트 생성 간격 (ms)
+  const HEART_THROTTLE_MS = 20; // 드래그 시 하트 생성 간격 (ms)
 
   function removeHeartEffect(id: number) {
     heartEffects = heartEffects.filter(effect => effect.id !== id);

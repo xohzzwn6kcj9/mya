@@ -30,7 +30,7 @@ export function setCookie() {
 export function hasLoveCookie(): boolean {
   if (!browser) return false;
   
-  return document.cookie.split(';').some(cookie => 
-    cookie.trim().startsWith('love=hy')
+  return document.cookie.split(';').some(cookie =>
+    cookie.trim() === 'love=hy'
   );
 } 

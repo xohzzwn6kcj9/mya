@@ -84,7 +84,6 @@
 
   // 하트 이펙트 상태
   let heartEffects: HeartEffect[] = [];
-  let nextHeartId = 0;
 
   // 드래그 상태 추적 (배경 드래그용)
   let isBackgroundDragging = false;
@@ -848,7 +847,7 @@
     fonts.forEach(font => {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = `https://fonts.googleapis.com/css2?family=${font.replace(' ', '+')}&display=swap`;
+      link.href = `https://fonts.googleapis.com/css2?family=${font.replaceAll(' ', '+')}&display=swap`;
       document.head.appendChild(link);
     });
 

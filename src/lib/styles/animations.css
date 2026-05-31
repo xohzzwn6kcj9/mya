@@ -105,3 +105,13 @@
   0%   { transform: translate(-50%, -50%) translate(0, 0); }
   100% { transform: translate(-50%, -50%) translate(var(--bx, 3%), var(--by, -3%)); }
 }
+
+/* echo-ripple - 탭 시 글자의 잔향 메아리 (제자리 확대 + fade-out) */
+@keyframes echo-ripple {
+  0% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.4); }
+}
+
+.echo-ripple {
+  animation: echo-ripple 0.8s ease-out forwards;
+}

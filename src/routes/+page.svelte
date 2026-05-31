@@ -48,6 +48,17 @@
     y: number;
   }
 
+  // 잔향 메아리(echo) 타입
+  interface EchoItem {
+    id: number;
+    text: string;
+    fontIndex: number;
+    colorIndex: number;
+    fontSize: number;
+    x: number;
+    y: number;
+  }
+
   // 먀/뮤 각각의 개수 확률 (0개: 15%, 1개: 40%, 2개: 25%, 3개: 12%, 4개: 5%, 5개: 3%)
   const TEXT_TYPE_COUNT_PROBABILITIES = [0.15, 0.4, 0.25, 0.12, 0.05, 0.03];
   const TEXT_WIDTH_RATIO = 1.5;  // 글자 너비 비율 (줄임)
@@ -66,6 +77,14 @@
 
   // 하트 이펙트 ID 카운터
   let nextHeartId = 0;
+
+  // 잔향 메아리(echo) 상태
+  let echoes: EchoItem[] = [];
+  let nextEchoId = 0;
+  // echo 자동 제거 타이머 추적 (컴포넌트 파괴 시 정리용)
+  let echoTimers: ReturnType<typeof setTimeout>[] = [];
+  const ECHO_DURATION_MS = 800;  // animations.css의 echo-ripple 0.8s와 일치
+  const ECHO_MAX = 40;            // echo 폭증 방지용 가벼운 상한
 
   let textItems: TextItem[] = [{
     id: nextItemId++,
@@ -117,6 +136,36 @@
 
   function removeHeartEffect(id: number) {
     heartEffects = heartEffects.filter(effect => effect.id !== id);
+  }
+
+  // echo 제거 (id로 필터)
+  function removeEcho(id: number) {
+    echoes = echoes.filter(e => e.id !== id);
+  }
+
+  // echo 생성: 각 신규 글자 item에 대해 메아리 push + 자동 제거 타이머 등록
+  function spawnEchoes(items: TextItem[]) {
+    for (const item of items) {
+      const id = nextEchoId++;
+      echoes = [...echoes, {
+        id,
+        text: buildMessageText(item),
+        fontIndex: item.fontIndex,
+        colorIndex: item.colorIndex,
+        fontSize: item.fontSize,
+        x: item.positionX,
+        y: item.positionY
+      }];
+      const timerId = setTimeout(() => {
+        removeEcho(id);
+        echoTimers = echoTimers.filter(t => t !== timerId);
+      }, ECHO_DURATION_MS);
+      echoTimers = [...echoTimers, timerId];
+    }
+    // 가벼운 상한: 폭증 시 오래된 echo부터 잘라냄 (타이머는 만료 시 removeEcho가 no-op이 되므로 무해)
+    if (echoes.length > ECHO_MAX) {
+      echoes = echoes.slice(echoes.length - ECHO_MAX);
+    }
   }
 
   // 하트만 생성하는 함수 (드래그용)
@@ -372,6 +421,9 @@
       newItems.push(item);
       prevFontIndex = item.fontIndex;
     }
+
+    // 잔향 메아리 생성 (newItems가 확정된 시점)
+    spawnEchoes(newItems);
 
     textItems = newItems;
   }
@@ -879,6 +931,9 @@
       if (animationFrameId !== null) {
         cancelAnimationFrame(animationFrameId);
       }
+      // 남은 echo 타이머 정리
+      echoTimers.forEach(t => clearTimeout(t));
+      echoTimers = [];
     };
   });
 </script>
@@ -901,6 +956,20 @@
   {#if DEBUG_SHOW_BOUNDS}
     <div class="debug-screen-boundary"></div>
   {/if}
+
+  <!-- 잔향 메아리(echo) 렌더링 -->
+  {#each echoes as e (e.id)}
+    <span
+      class="echo-ripple"
+      style="
+        font-family: {fonts[e.fontIndex]};
+        color: {currentTheme.textColors[e.colorIndex]};
+        font-size: {e.fontSize}vh;
+        left: {e.x}%;
+        top: {e.y}%;
+      "
+    >{e.text}</span>
+  {/each}
 
   {#each textItems as item (item.id)}
     <!-- 잔상 효과 렌더링 -->
@@ -1003,6 +1072,19 @@
     white-space: nowrap;
     text-align: center;
     transform-origin: center center;
+    z-index: 1;
+  }
+
+  /* 잔향 메아리(echo) 레이아웃 - 애니메이션은 :global(.echo-ripple) (animations.css) */
+  .echo-ripple {
+    position: absolute;
+    margin: 0;
+    user-select: none;
+    pointer-events: none;
+    white-space: nowrap;
+    text-align: center;
+    transform-origin: center center;
+    filter: blur(8px);
     z-index: 1;
   }
 

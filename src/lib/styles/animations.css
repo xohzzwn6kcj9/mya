@@ -99,3 +99,9 @@
     transform: scale(0.5) translateY(-60px) rotate(-3deg);
   }
 }
+
+/* bokeh-drift - 보케 입자 초저속 표류 (지각 한계 아래) */
+@keyframes bokeh-drift {
+  0%   { transform: translate(-50%, -50%) translate(0, 0); }
+  100% { transform: translate(-50%, -50%) translate(var(--bx, 3%), var(--by, -3%)); }
+}

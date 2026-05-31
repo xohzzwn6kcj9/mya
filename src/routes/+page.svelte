@@ -7,6 +7,7 @@
   import { SPECIAL_MESSAGE_PROBABILITY, EXCLAMATION_PROBABILITY, QUESTION_MARK_PROBABILITY, SINGLE_DAY_FONT_PROBABILITY, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from '$lib/constants';
   import '$lib/styles/animations.css';
   import HeartBubbles from '$lib/components/HeartBubbles.svelte';
+  import BokehField from '$lib/components/BokehField.svelte';
 
   // 잔상 위치 타입
   interface TrailPosition {
@@ -890,6 +891,8 @@
   on:touchmove={handleGlobalDragMove}
   on:touchend={handleGlobalDragEnd}
 >
+  <BokehField colors={currentTheme.heartColors} />
+
   <!-- 디버깅: 화면 경계 표시 -->
   {#if DEBUG_SHOW_BOUNDS}
     <div class="debug-screen-boundary"></div>

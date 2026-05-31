@@ -115,3 +115,11 @@
 .echo-ripple {
   animation: echo-ripple 0.8s ease-out forwards;
 }
+
+/* 모션 민감 사용자: 장식용 메아리는 숨김 (BokehField와 동일한 대응) */
+@media (prefers-reduced-motion: reduce) {
+  .echo-ripple {
+    animation: none;
+    opacity: 0;
+  }
+}

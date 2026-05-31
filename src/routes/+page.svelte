@@ -53,7 +53,7 @@
     id: number;
     text: string;
     fontIndex: number;
-    colorIndex: number;
+    color: string;  // 생성 시점 색을 스냅샷 (테마 변경과 무관하게 메아리 색 유지)
     fontSize: number;
     x: number;
     y: number;
@@ -151,7 +151,7 @@
         id,
         text: buildMessageText(item),
         fontIndex: item.fontIndex,
-        colorIndex: item.colorIndex,
+        color: currentTheme.textColors[item.colorIndex],
         fontSize: item.fontSize,
         x: item.positionX,
         y: item.positionY
@@ -963,7 +963,7 @@
       class="echo-ripple"
       style="
         font-family: {fonts[e.fontIndex]};
-        color: {currentTheme.textColors[e.colorIndex]};
+        color: {e.color};
         font-size: {e.fontSize}vh;
         left: {e.x}%;
         top: {e.y}%;
@@ -978,6 +978,7 @@
         class="trail-ghost"
         style="
           font-family: {fonts[item.fontIndex]};
+          color: {currentTheme.textColors[item.colorIndex]};
           color: color-mix(in oklch, {currentTheme.textColors[item.colorIndex]} {Math.round((1 - i / TRAIL_LENGTH) * 100)}%, {currentTheme.textColors[(item.colorIndex + 1) % currentTheme.textColors.length]});
           font-size: {item.fontSize}vh;
           left: {trailPos.x}%;

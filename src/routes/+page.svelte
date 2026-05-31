@@ -63,6 +63,9 @@
   // 텍스트 아이템 ID 카운터 (textItems 초기화 전에 선언 필요)
   let nextItemId = 0;
 
+  // 하트 이펙트 ID 카운터
+  let nextHeartId = 0;
+
   let textItems: TextItem[] = [{
     id: nextItemId++,
     fontIndex: getRandomIndex(fonts.length),

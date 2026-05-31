@@ -697,16 +697,20 @@
 
     // 속도가 충분히 빠를 때만 잔상 추가
     if (speed > TRAIL_MIN_VELOCITY) {
+      // 속도가 클수록 잔상이 약간 더 진하게 (상한 1.5배로 클램프, 위치/속도 계산은 불변)
+      const speedBoost = Math.min(1 + speed * 0.15, 1.5);
+      const dynamicStart = TRAIL_OPACITY_START * speedBoost;
+
       // 현재 위치를 잔상으로 추가 (앞에 추가)
       const newTrail: TrailPosition[] = [
-        { x: item.positionX, y: item.positionY, opacity: TRAIL_OPACITY_START },
+        { x: item.positionX, y: item.positionY, opacity: dynamicStart },
         ...item.trail
       ];
 
       // 잔상 개수 제한 및 투명도 감소
       return newTrail.slice(0, TRAIL_LENGTH).map((t, i) => ({
         ...t,
-        opacity: TRAIL_OPACITY_START * (1 - (i + 1) / (TRAIL_LENGTH + 1))
+        opacity: dynamicStart * (1 - (i + 1) / (TRAIL_LENGTH + 1))
       }));
     }
 
@@ -905,11 +909,12 @@
         class="trail-ghost"
         style="
           font-family: {fonts[item.fontIndex]};
-          color: {currentTheme.textColors[item.colorIndex]};
+          color: color-mix(in oklch, {currentTheme.textColors[item.colorIndex]} {Math.round((1 - i / TRAIL_LENGTH) * 100)}%, {currentTheme.textColors[(item.colorIndex + 1) % currentTheme.textColors.length]});
           font-size: {item.fontSize}vh;
           left: {trailPos.x}%;
           top: {trailPos.y}%;
           opacity: {trailPos.opacity};
+          filter: blur({1 + i * 0.3}px);
           transform: translate(-50%, -50%) scale({1 - (i + 1) * 0.05});
         "
       >
@@ -998,7 +1003,6 @@
     white-space: nowrap;
     text-align: center;
     transform-origin: center center;
-    filter: blur(1px);
     z-index: 1;
   }
 

@@ -134,6 +134,15 @@
     return 0;
   }
 
+  // 메시지 문자열 조합 (base + 부호, exclamationFirst 순서 반영)
+  function buildMessageText(item: TextItem): string {
+    const base = item.showSpecialMessage ? '사랑해' : (item.showMyu ? '뮤' : '먀');
+    const exclamation = item.showExclamation ? '!' : '';
+    const question = item.showQuestionMark ? '?' : '';
+    const marks = item.exclamationFirst ? exclamation + question : question + exclamation;
+    return base + marks;
+  }
+
   // 경계 박스 타입
   interface BoundingBox {
     left: number;   // vw %
@@ -901,7 +910,7 @@
           transform: translate(-50%, -50%) scale({1 - (i + 1) * 0.05});
         "
       >
-        {item.showSpecialMessage ? '사랑해' : (item.showMyu ? '뮤' : '먀')}{#if item.exclamationFirst}{item.showExclamation ? '!' : ''}{item.showQuestionMark ? '?' : ''}{:else}{item.showQuestionMark ? '?' : ''}{item.showExclamation ? '!' : ''}{/if}
+        {buildMessageText(item)}
       </span>
     {/each}
     <!-- 디버깅: 각 글자의 충돌 박스 표시 -->
@@ -918,7 +927,7 @@
       on:mousedown={(e) => handleItemDragStart(e, item.id)}
       on:touchstart={(e) => handleItemDragStart(e, item.id)}
     >
-      {item.showSpecialMessage ? '사랑해' : (item.showMyu ? '뮤' : '먀')}{#if item.exclamationFirst}{item.showExclamation ? '!' : ''}{item.showQuestionMark ? '?' : ''}{:else}{item.showQuestionMark ? '?' : ''}{item.showExclamation ? '!' : ''}{/if}
+      {buildMessageText(item)}
     </h1>
   {/each}
 </main>

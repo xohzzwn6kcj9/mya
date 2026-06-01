@@ -2,6 +2,7 @@ export const SPECIAL_MESSAGE_PROBABILITY = 0.1;
 export const EXCLAMATION_PROBABILITY = 0.3;
 export const QUESTION_MARK_PROBABILITY = 0.3;
 export const SINGLE_DAY_FONT_PROBABILITY = 0.3;
+export const DIALECT_PROBABILITY = 0.3; // 와이프 전용: 뮤 메시지가 X뮤 사투리(괜찮뮤 등)로 뜰 확률
 
 // Love-gate ("사랑해" reveal) — wife-only soft gate. No date gate, no cookie.
 // loveActive turns on via either (A) device-model match or (B) the secret URL token,

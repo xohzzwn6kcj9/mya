@@ -30,11 +30,6 @@ export const MYU_VARIANTS: MyaVariant[] = [
   { text: '뮤뮤', weight: 0.1, meaning: '장난·삐짐의 들뜬 부름' },
   { text: '뮤뮤뮤', weight: 0.06, meaning: '토라짐·투정 (길수록 강도↑)' },
   { text: '뮤웅', weight: 0.05, meaning: '둥글게 수긍하는 칭얼' },
-  // X뮤 사투리 — 어미를 '뮤'로 굴린 둘만의 말 (실제 카톡 용례)
-  { text: '괜찮뮤', weight: 0.06, meaning: "'괜찮아'의 둘만의 사투리 (X뮤 어미)" },
-  { text: '이쁘뮤', weight: 0.06, meaning: "'예쁘다'의 둘만의 사투리" },
-  { text: '바부뮤', weight: 0.05, meaning: "'바보'의 다정한 사투리 (나밖에 모르는 바보)" },
-  { text: '나만믿뮤', weight: 0.05, meaning: "'나만 믿어'의 둘만의 사투리" },
 ];
 
 // 사랑해 계열 — 쿠키 보유자에게만 뜨는 숨은 메시지
@@ -43,9 +38,22 @@ export const LOVE_VARIANTS: MyaVariant[] = [
   { text: '사랑뮤', weight: 0.4, meaning: "'사랑해'의 둘만의 사투리 (X뮤 어미)" },
 ];
 
-// 카테고리 선택자 (기존 showMyu/showSpecialMessage 분기와 매핑)
-export function variantsFor(showSpecialMessage: boolean, showMyu: boolean): MyaVariant[] {
+// X뮤 사투리 계열 — 와이프 전용 별도 풀 (loveActive 게이트, '사랑해' 풀과 분리해 비중 안 건드림)
+export const DIALECT_VARIANTS: MyaVariant[] = [
+  { text: '괜찮뮤', weight: 1, meaning: "'괜찮아'의 둘만의 사투리 (X뮤 어미)" },
+  { text: '이쁘뮤', weight: 1, meaning: "'예쁘다'의 둘만의 사투리" },
+  { text: '바부뮤', weight: 1, meaning: "'바보'의 다정한 사투리 (나밖에 모르는 바보)" },
+  { text: '나만믿뮤', weight: 1, meaning: "'나만 믿어'의 둘만의 사투리" },
+];
+
+// 카테고리 선택자 (showSpecialMessage > showDialect > showMyu 우선순위)
+export function variantsFor(
+  showSpecialMessage: boolean,
+  showMyu: boolean,
+  showDialect = false
+): MyaVariant[] {
   if (showSpecialMessage) return LOVE_VARIANTS;
+  if (showDialect) return DIALECT_VARIANTS;
   return showMyu ? MYU_VARIANTS : MYA_VARIANTS;
 }
 

@@ -4,7 +4,7 @@
   import { getRandomIndex } from '$lib/utils/styleUtils';
   import { selectTheme, selectDifferentTheme, shouldChangeTheme, type ThemeId, type Theme } from '$lib/utils/themeUtils';
   import { hasLoveFlag, setLoveFlag, hasLoveToken, resolveWifeDevice } from '$lib/utils/userContextUtils';
-  import { SPECIAL_MESSAGE_PROBABILITY, EXCLAMATION_PROBABILITY, QUESTION_MARK_PROBABILITY, SINGLE_DAY_FONT_PROBABILITY, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from '$lib/constants';
+  import { SPECIAL_MESSAGE_PROBABILITY, DIALECT_PROBABILITY, EXCLAMATION_PROBABILITY, QUESTION_MARK_PROBABILITY, SINGLE_DAY_FONT_PROBABILITY, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from '$lib/constants';
   import '$lib/styles/animations.css';
   import HeartBubbles from '$lib/components/HeartBubbles.svelte';
   import BokehField from '$lib/components/BokehField.svelte';
@@ -34,6 +34,7 @@
     isDragging: boolean;
     showSpecialMessage: boolean;
     showMyu: boolean;
+    showDialect: boolean;  // 와이프 전용 X뮤 사투리 풀 사용 여부
     showExclamation: boolean;
     showQuestionMark: boolean;
     exclamationFirst: boolean;  // !?와 ?! 순서 결정
@@ -114,6 +115,7 @@
     isDragging: false,
     showSpecialMessage: false,
     showMyu: false,
+    showDialect: false,
     showExclamation: false,
     showQuestionMark: false,
     exclamationFirst: true,
@@ -164,10 +166,6 @@
   const HOLD_DELAY_MS = 350;               // 이 시간 정지 유지 시 hold 모드 진입
   const HOLD_MOVE_THRESHOLD = 10;          // px, 이 이상 움직이면 드래그로 간주(hold 취소)
   const HOLD_RAMP_MS = 1100;               // 후광이 최대로 차오르는 시간
-  // 길게 누름 툴팁(먀-사전 뜻풀이 + 일화) 비활성화 플래그.
-  // UI 재검토 + 일화 내용 직접 검수 위해 일단 OFF. 체온 글로우(후광)는 유지.
-  // 데이터/로더는 그대로라 true 로만 바꾸면 즉시 재개.
-  const SHOW_HOLD_TOOLTIP: boolean = false;
   let suppressNextClick = false;           // 체온 글로우 릴리스 직후 따라오는 합성 click 무시용
 
   // 물리 시뮬레이션 활성화
@@ -230,9 +228,9 @@
     return 0;
   }
 
-  // 변형 폼 객체 (showSpecialMessage/showMyu 분기 + variantIndex 안전 접근)
+  // 변형 폼 객체 (showSpecialMessage/showDialect/showMyu 분기 + variantIndex 안전 접근)
   function variantOf(item: TextItem): MyaVariant {
-    const variants = variantsFor(item.showSpecialMessage, item.showMyu);
+    const variants = variantsFor(item.showSpecialMessage, item.showMyu, item.showDialect);
     return variants[item.variantIndex] ?? variants[0];
   }
 
@@ -245,19 +243,6 @@
     return base + marks;
   }
 
-  // 부호가 얹는 뉘앙스 (먀? = 되묻기, 먀! = 반가움 — 실제 카톡 용례 기반)
-  function punctuationNuance(item: TextItem): string {
-    if (item.showSpecialMessage) return '';
-    if (item.showExclamation && item.showQuestionMark) return ' · 놀라 들뜬 톤';
-    if (item.showQuestionMark) return ' · 살짝 되묻듯';
-    if (item.showExclamation) return ' · 반가움 가득';
-    return '';
-  }
-
-  // 먀-사전: 글자의 변형 폼 + 부호에 대응하는 뜻 (롱프레스 시 표시)
-  function lookupMeaning(item: TextItem): string {
-    return variantOf(item).meaning + punctuationNuance(item);
-  }
 
   // 경계 박스 타입
   interface BoundingBox {
@@ -350,13 +335,15 @@
     // 특별 메시지, 느낌표, 물음표 (위치 계산 전에 결정)
     const showSpecialMessage = loveActive && Math.random() < SPECIAL_MESSAGE_PROBABILITY;
     const showMyu = isMyu;  // 파라미터로 전달받음
+    // X뮤 사투리: 와이프 전용(loveActive), 사랑해가 아닌 뮤 메시지에서 가끔 별도 풀로
+    const showDialect = loveActive && !showSpecialMessage && showMyu && Math.random() < DIALECT_PROBABILITY;
     const showExclamation = Math.random() < EXCLAMATION_PROBABILITY;
     // 물음표는 사랑해가 아닐 때만 적용
     const showQuestionMark = !showSpecialMessage && Math.random() < QUESTION_MARK_PROBABILITY;
     // !?와 ?! 순서 랜덤 결정
     const exclamationFirst = Math.random() < 0.5;
-    // 사투리: 먀/뮤/사랑해 계열 내에서 실제 카톡 빈도 가중으로 변형 폼 추첨
-    const variantIndex = pickVariantIndex(variantsFor(showSpecialMessage, showMyu));
+    // 사투리: 먀/뮤/사랑해/X뮤 계열 내에서 실제 카톡 빈도 가중으로 변형 폼 추첨
+    const variantIndex = pickVariantIndex(variantsFor(showSpecialMessage, showMyu, showDialect));
 
     // 최소 폰트 크기가 들어갈 수 있는 여유 확보
     const minMarginY = FONT_SIZE_MIN / 2 + ANIMATION_MARGIN;
@@ -409,6 +396,7 @@
         isDragging: false,
         showSpecialMessage,
         showMyu,
+        showDialect,
         showExclamation,
         showQuestionMark,
         exclamationFirst,
@@ -1122,9 +1110,6 @@
     startPhysicsIfNeeded();
   }
 
-  // 먀-사전 롱프레스: 현재 누르고 있는 글자 (뜻풀이 툴팁용)
-  $: heldItem = heldItemId !== null ? textItems.find((t) => t.id === heldItemId) : null;
-
   onMount(() => {
     // 뷰포트 높이 설정 (모바일 브라우저 대응)
     function setViewportHeight() {
@@ -1258,15 +1243,6 @@
       {buildMessageText(item)}
     </h1>
   {/each}
-
-  <!-- 먀-사전 뜻풀이 툴팁 (글자를 길게 누르면 떠오름, 체온 글로우와 연동) -->
-  {#if SHOW_HOLD_TOOLTIP && heldItem}
-    <div
-      class="mya-meaning"
-      class:above={heldItem.positionY > 70}
-      style="left: {heldItem.positionX}%; top: {heldItem.positionY}%; --off: {heldItem.fontSize / 2 + 1.5}vh; opacity: {Math.min(holdGlow * 1.6, 1)};"
-    >{lookupMeaning(heldItem)}</div>
-  {/if}
 </main>
 
 <!-- 뮤트 토글: main의 형제로 배치해 전체화면 탭(handleClick)과 분리, stopPropagation으로 방어 -->
@@ -1321,31 +1297,6 @@
     .theme-dissolve {
       transition: none;
     }
-  }
-
-  /* 먀-사전 뜻풀이 툴팁 (롱프레스 시 글자 옆에 떠오름) */
-  .mya-meaning {
-    position: absolute;
-    transform: translate(-50%, var(--off, 8vh));
-    max-width: 70vw;
-    padding: 6px 12px;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.88);
-    color: #4a4a4a;
-    font-size: 14px;
-    line-height: 1.35;
-    text-align: center;
-    pointer-events: none;
-    z-index: 150;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
-    transition: opacity 0.2s ease;
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
-  }
-
-  /* 화면 아래쪽 글자는 툴팁을 위로 띄움 */
-  .mya-meaning.above {
-    transform: translate(-50%, calc(-100% - var(--off, 8vh)));
   }
 
   h1 {

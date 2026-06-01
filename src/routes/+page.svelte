@@ -83,7 +83,7 @@
   let dissolve: ThemeDissolve | null = null;
   let dissolveId = 0;
   let dissolveTimer: ReturnType<typeof setTimeout> | null = null;
-  const DISSOLVE_MS = 600;
+  const DISSOLVE_MS = 600;  // CSS .theme-dissolve transition(0.6s)과 일치 — 미만이면 전환 중 배경이 끊김
 
   // 텍스트 아이템 ID 카운터 (textItems 초기화 전에 선언 필요)
   let nextItemId = 0;
@@ -161,6 +161,7 @@
   const HOLD_DELAY_MS = 350;               // 이 시간 정지 유지 시 hold 모드 진입
   const HOLD_MOVE_THRESHOLD = 10;          // px, 이 이상 움직이면 드래그로 간주(hold 취소)
   const HOLD_RAMP_MS = 1100;               // 후광이 최대로 차오르는 시간
+  let suppressNextClick = false;           // 체온 글로우 릴리스 직후 따라오는 합성 click 무시용
 
   // 물리 시뮬레이션 활성화
   let animationFrameId: number | null = null;
@@ -414,6 +415,12 @@
   }
 
   function handleClick(event: MouseEvent | TouchEvent) {
+    // 체온 글로우 릴리스 직후 따라오는 합성 click은 무시 (붙잡고 있던 글자를 갈아엎지 않게)
+    if (suppressNextClick) {
+      suppressNextClick = false;
+      return;
+    }
+
     // 오디오 진입 의식: 첫 사용자 제스처에서 1회만 AudioContext 생성/resume
     if (!audioInitialized) {
       audioInitialized = true;
@@ -450,8 +457,10 @@
     currentGradientIndex = newGradientIndex;
     const newGradient = currentTheme.gradients[currentGradientIndex];
 
-    if (themeChanging) {
-      // 새 계절이 탭 지점에서 원형으로 번지는 잉크 디졸브 (배경 커밋은 디졸브 끝에서)
+    if (themeChanging || dissolve !== null) {
+      // 새 계절(또는 디졸브 진행 중의 색 변경)은 탭 지점에서 원형으로 번지는 잉크 디졸브로.
+      // dissolve 활성 중 displayGradient를 밑에서 직접 쓰면 배경이 튀고, 대기 중이던 타이머가
+      // 나중에 그라데이션을 되돌려 state desync를 만들므로 반드시 디졸브 경로로 라우팅한다.
       startThemeDissolve(newGradient, clientX, clientY);
     } else {
       // 같은 테마 내 색 변경은 즉시 (main의 0.2s 배경 트랜지션)
@@ -591,6 +600,11 @@
   function startHoldGlow(itemId: number) {
     holdTimer = null;
     heldItemId = itemId;
+    // 모션 민감 사용자: 램프 없이 즉시 최대 후광 (BokehField/echo와 동일한 대응)
+    if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      holdGlow = 1;
+      return;
+    }
     let startTs: number | null = null;
     const ramp = (ts: number) => {
       if (startTs === null) startTs = ts;
@@ -731,7 +745,8 @@
   function handleGlobalDragEnd(event: MouseEvent | TouchEvent) {
     if (draggedItemId !== null) {
       // 체온 글로우 릴리스: hold이 활성이었으면 글자에서 풍성한 하트를 터뜨린다(던지기 아님)
-      if (heldItemId !== null) {
+      const wasHold = heldItemId !== null;
+      if (wasHold) {
         const heldItem = textItems.find(t => t.id === heldItemId);
         if (heldItem) {
           const center = percentToPixel(heldItem.positionX, heldItem.positionY);
@@ -739,6 +754,10 @@
           for (let b = 0; b < bursts; b++) {
             heartEffects = [...heartEffects, { id: nextHeartId++, x: center.x, y: center.y }];
           }
+        }
+        // 이어지는 합성 click이 붙잡던 글자를 재생성하지 않게 (click을 내는 mouseup/touchend에서만)
+        if (event.type === 'mouseup' || event.type === 'touchend') {
+          suppressNextClick = true;
         }
       }
 
@@ -756,7 +775,8 @@
       const velocityY = (vy / window.innerHeight) * 100 * THROW_MULTIPLIER;
 
       // 최소 속도 이상일 때만 던지기 적용
-      const hasVelocity = Math.abs(velocityX) > MIN_VELOCITY || Math.abs(velocityY) > MIN_VELOCITY;
+      // hold(정지 길게누름)였으면 미세 지터로도 던져지지 않게 속도 무효화
+      const hasVelocity = (Math.abs(velocityX) > MIN_VELOCITY || Math.abs(velocityY) > MIN_VELOCITY) && !wasHold;
 
       textItems = textItems.map(t =>
         t.id === draggedItemId
@@ -1231,6 +1251,13 @@
     z-index: 0;
     pointer-events: none;
     transition: clip-path 0.6s ease;
+  }
+
+  /* 모션 민감 사용자: 디졸브 전환 없이 즉시 (BokehField/echo와 동일한 대응) */
+  @media (prefers-reduced-motion: reduce) {
+    .theme-dissolve {
+      transition: none;
+    }
   }
 
   h1 {

@@ -232,10 +232,19 @@
     return base + marks;
   }
 
-  // 먀-사전: 글자의 변형 폼에 대응하는 뜻 (롱프레스 시 표시)
+  // 부호가 얹는 뉘앙스 (먀? = 되묻기, 먀! = 반가움 — 실제 카톡 용례 기반)
+  function punctuationNuance(item: TextItem): string {
+    if (item.showSpecialMessage) return '';
+    if (item.showExclamation && item.showQuestionMark) return ' · 놀라 들뜬 톤';
+    if (item.showQuestionMark) return ' · 살짝 되묻듯';
+    if (item.showExclamation) return ' · 반가움 가득';
+    return '';
+  }
+
+  // 먀-사전: 글자의 변형 폼 + 부호에 대응하는 뜻 (롱프레스 시 표시)
   function lookupMeaning(item: TextItem): string {
     const variants = variantsFor(item.showSpecialMessage, item.showMyu);
-    return (variants[item.variantIndex] ?? variants[0]).meaning;
+    return (variants[item.variantIndex] ?? variants[0]).meaning + punctuationNuance(item);
   }
 
   // 경계 박스 타입

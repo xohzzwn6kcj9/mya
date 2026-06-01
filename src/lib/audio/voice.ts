@@ -4,8 +4,7 @@
 //   null이면 즉시 return → SSR/미탭 테스트(render-only) graceful.
 // 물리/렌더는 일절 건드리지 않는 순수 부수효과(소리)만 담당한다.
 
-import { get } from 'svelte/store';
-import { getAudioContext, getMasterGain, muted } from './audio';
+import { getAudioContext, getMasterGain, isMuted } from './audio';
 import type { SoundSkin } from './soundSkins';
 import { FONT_SIZE_MIN, FONT_SIZE_MAX } from '$lib/constants';
 
@@ -45,6 +44,7 @@ function clampPan(v: number): number {
 
 // 글자 하나의 목소리를 재생한다. 컨텍스트가 없거나 예외면 조용히 무음.
 export function playLetterVoice(opts: LetterVoiceOpts, skin: SoundSkin): void {
+  if (isMuted()) return; // 뮤트면 노드 생성 자체를 건너뛴다 (글자마다 osc 체인 churn 방지)
   const audio = getAudioContext();
   if (!audio) return; // SSR/미지원/미탭 → 무음 graceful
 
@@ -104,6 +104,7 @@ export function playLetterVoice(opts: LetterVoiceOpts, skin: SoundSkin): void {
 // navigator.vibrate만 master 버스를 거치지 않으므로 muted 스토어로 따로 가드한다.
 // 컨텍스트 null(SSR/미지원/미탭)/예외 시 무음·무진동 graceful.
 export function playLoveMelody(skin: SoundSkin): void {
+  if (isMuted()) return; // 뮤트면 멜로디·진동 모두 생략
   const audio = getAudioContext();
   if (!audio) return; // SSR/미지원/미탭 → 무음 graceful
 
@@ -139,8 +140,8 @@ export function playLoveMelody(skin: SoundSkin): void {
       };
     });
 
-    // 햅틱: master 버스를 안 거치므로 뮤트 시 진동도 멈춘다 (vibrate 미지원이면 no-op).
-    if (!get(muted) && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    // 햅틱: 함수 진입에서 뮤트를 이미 걸렀으므로 여기선 vibrate 지원 여부만 본다 (미지원이면 no-op).
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate(LOVE_VIBRATE_PATTERN);
     }
   } catch {
@@ -157,6 +158,7 @@ export function playLoveMelody(skin: SoundSkin): void {
 // @param impactSpeed 충돌 세기 (물리의 vw/vh-%/frame 단위, 정규화되지 않음 — 느리면 <1, 강하면 수 단위)
 // @param fontSize 충돌 글자 크기(vh, FONT_SIZE_MIN..FONT_SIZE_MAX) — 음색 결정
 export function playCollision(impactSpeed: number, fontSize: number): void {
+  if (isMuted()) return; // 뮤트면 충돌음·진동 모두 생략
   const audio = getAudioContext();
   if (!audio) return; // SSR/미지원/미탭 → 무음 graceful
 
@@ -214,9 +216,9 @@ export function playCollision(impactSpeed: number, fontSize: number): void {
       }
     };
 
-    // ── 햅틱: master 버스를 안 거치므로 뮤트 시 진동도 멈춘다 (vibrate 미지원이면 no-op) ──
+    // ── 햅틱: 함수 진입에서 뮤트를 이미 걸렀으므로 vibrate 지원 여부만 본다 (미지원이면 no-op) ──
     // 8ms(약한 탭) → 25ms(강한 충돌), impactSpeed 비례.
-    if (!get(muted) && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       const ms = Math.round(Math.min(8 + speed * 6, 25));
       navigator.vibrate(ms);
     }

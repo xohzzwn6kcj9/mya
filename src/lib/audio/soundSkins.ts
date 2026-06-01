@@ -58,7 +58,7 @@ const DEFAULT_SKIN: SoundSkin = {
   baseFreq: 261.63, // C4
 };
 
-// themeId → SoundSkin. 미지정 id면 DEFAULT_SKIN으로 graceful 폴백.
-export function soundSkinFor(themeId: ThemeId | string): SoundSkin {
-  return SKINS[themeId as ThemeId] ?? DEFAULT_SKIN;
+// themeId → SoundSkin. 미지정 id(테마 추가 후 맵 미갱신)면 DEFAULT_SKIN으로 graceful 폴백.
+export function soundSkinFor(themeId: ThemeId): SoundSkin {
+  return SKINS[themeId] ?? DEFAULT_SKIN;
 }

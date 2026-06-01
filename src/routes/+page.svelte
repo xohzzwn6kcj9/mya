@@ -125,7 +125,6 @@
 
   // 충돌음 throttle 상태 (프레임당 최대 3회, 프레임 경계는 updatePhysics 진입마다 리셋)
   // ※ 일반 let — textItems와 무관하므로 변경해도 $: 물리 가드를 재트리거하지 않는다.
-  let collisionSoundFrameId = 0;            // requestAnimationFrame마다 증가하는 프레임 카운터
   let collisionSoundsThisFrame = 0;         // 현재 프레임에서 재생한 충돌음 수
   const COLLISION_SOUNDS_PER_FRAME = 3;     // 프레임당 최대 충돌음 (폭주 방지)
   const MIN_WALL_IMPACT = 0.25;             // 이 미만 벽 반사 속도는 무음 (미세 떨림 무시)
@@ -833,7 +832,6 @@
     const aspectRatio = window.innerWidth / window.innerHeight;
 
     // 충돌음 프레임 경계: 매 rAF tick마다 카운터 리셋 ('프레임당 최대 3회' 정확히 추적)
-    collisionSoundFrameId++;
     collisionSoundsThisFrame = 0;
 
     // 1단계: 위치 업데이트 및 벽 충돌 처리

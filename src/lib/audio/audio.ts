@@ -111,6 +111,12 @@ export function initAudioOnFirstGesture(): void {
   }
 }
 
+// 현재 뮤트 상태 (closure 미러를 즉시 읽음 — store get() 구독 비용 없이 호출당 저렴).
+// 재생 함수들이 노드 생성 전에 early-return 하는 데 쓴다.
+export function isMuted(): boolean {
+  return currentMuted;
+}
+
 // 후속 오디오 모듈이 재생을 감싸는 try/catch 래퍼.
 export function playSafe<T>(fn: () => T): T | undefined {
   if (!browser) return undefined;

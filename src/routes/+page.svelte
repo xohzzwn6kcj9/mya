@@ -75,6 +75,16 @@
   let currentTheme: Theme = selectTheme();
   let currentGradientIndex = getRandomIndex(currentTheme.gradients.length);
 
+  // main 배경에 실제로 그려지는 그라데이션. 테마 디졸브 동안엔 옛 값을 유지하다 끝에서 커밋한다.
+  let displayGradient = currentTheme.gradients[currentGradientIndex];
+
+  // 테마 전환 잉크 디졸브 상태 (탭 지점에서 새 계절이 원형으로 번짐)
+  interface ThemeDissolve { id: number; gradient: string; x: number; y: number; r: number; }
+  let dissolve: ThemeDissolve | null = null;
+  let dissolveId = 0;
+  let dissolveTimer: ReturnType<typeof setTimeout> | null = null;
+  const DISSOLVE_MS = 600;
+
   // 텍스트 아이템 ID 카운터 (textItems 초기화 전에 선언 필요)
   let nextItemId = 0;
 
@@ -375,6 +385,23 @@
     return bestItem!;
   }
 
+  // 탭 지점에서 새 그라데이션이 원형으로 번지는 잉크 디졸브 시작.
+  // 위치 이동 애니메이션이 아니라 clip-path reveal이라 애니메이션 원칙에 부합한다.
+  function startThemeDissolve(gradient: string, x: number, y: number) {
+    if (dissolveTimer !== null) clearTimeout(dissolveTimer);
+    const id = ++dissolveId;
+    dissolve = { id, gradient, x, y, r: 0 };
+    // 다음 프레임에 반지름을 키워 clip-path 트랜지션을 발동(enter 트랜지션 트릭)
+    requestAnimationFrame(() => {
+      if (dissolve && dissolve.id === id) dissolve = { ...dissolve, r: 150 };
+    });
+    dissolveTimer = setTimeout(() => {
+      displayGradient = gradient; // 배경을 새 그라데이션으로 이음매 없이 커밋
+      dissolve = null;
+      dissolveTimer = null;
+    }, DISSOLVE_MS);
+  }
+
   function handleClick(event: MouseEvent | TouchEvent) {
     // 오디오 진입 의식: 첫 사용자 제스처에서 1회만 AudioContext 생성/resume
     if (!audioInitialized) {
@@ -399,16 +426,26 @@
     heartEffects = [...heartEffects, { id: nextHeartId++, x: clientX, y: clientY }];
 
     // 10% 확률로 테마 변경
-    if (shouldChangeTheme()) {
+    const themeChanging = shouldChangeTheme();
+    if (themeChanging) {
       currentTheme = selectDifferentTheme(currentTheme.id as ThemeId);
     }
 
-    // 배경색 변경 (현재 테마 내에서)
+    // 배경색 변경 (변경됐을 수 있는 현재 테마 내에서)
     let newGradientIndex;
     do {
       newGradientIndex = getRandomIndex(currentTheme.gradients.length);
     } while (newGradientIndex === currentGradientIndex && currentTheme.gradients.length > 1);
     currentGradientIndex = newGradientIndex;
+    const newGradient = currentTheme.gradients[currentGradientIndex];
+
+    if (themeChanging) {
+      // 새 계절이 탭 지점에서 원형으로 번지는 잉크 디졸브 (배경 커밋은 디졸브 끝에서)
+      startThemeDissolve(newGradient, clientX, clientY);
+    } else {
+      // 같은 테마 내 색 변경은 즉시 (main의 0.2s 배경 트랜지션)
+      displayGradient = newGradient;
+    }
 
     // 먀와 뮤 개수 독립적으로 결정
     let myaCount = getTypeCount();
@@ -1001,13 +1038,15 @@
       // 남은 echo 타이머 정리
       echoTimers.forEach(t => clearTimeout(t));
       echoTimers = [];
+      // 디졸브 타이머 정리
+      if (dissolveTimer !== null) clearTimeout(dissolveTimer);
     };
   });
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
 <main
-  style="background: {currentTheme.gradients[currentGradientIndex]}"
+  style="background: {displayGradient}"
   on:click={handleClick}
   on:mousedown={handleBackgroundDragStart}
   on:mousemove={handleGlobalDragMove}
@@ -1017,6 +1056,12 @@
   on:touchmove={handleGlobalDragMove}
   on:touchend={handleGlobalDragEnd}
 >
+  {#if dissolve}
+    {#key dissolve.id}
+      <div class="theme-dissolve" style="background: {dissolve.gradient}; clip-path: circle({dissolve.r}% at {dissolve.x}px {dissolve.y}px);"></div>
+    {/key}
+  {/if}
+
   <BokehField colors={currentTheme.heartColors} />
 
   <!-- 디버깅: 화면 경계 표시 -->
@@ -1113,6 +1158,15 @@
     transition: background 0.2s ease;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 테마 전환 잉크 디졸브: 탭 지점에서 새 그라데이션이 원형으로 reveal (위치 이동 아님 → 원칙 부합) */
+  .theme-dissolve {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    transition: clip-path 0.6s ease;
   }
 
   h1 {

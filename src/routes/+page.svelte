@@ -151,6 +151,17 @@
   const DRAG_HISTORY_SIZE = 5;  // 저장할 이력 개수
   const DRAG_VELOCITY_WINDOW = 150;  // 속도 계산에 사용할 시간 윈도우 (ms)
 
+  // 체온 글로우(길게 누르기) 상태 — 기존 드래그-던지기와 배타: 일정 이상 움직이면 취소된다.
+  let heldItemId: number | null = null;   // 길게 누르는 중인 글자
+  let holdGlow = 0;                        // 0~1, 누르는 동안 차오르는 흰 후광 세기
+  let holdTimer: ReturnType<typeof setTimeout> | null = null;
+  let holdRaf: number | null = null;
+  let holdStartX = 0;
+  let holdStartY = 0;
+  const HOLD_DELAY_MS = 350;               // 이 시간 정지 유지 시 hold 모드 진입
+  const HOLD_MOVE_THRESHOLD = 10;          // px, 이 이상 움직이면 드래그로 간주(hold 취소)
+  const HOLD_RAMP_MS = 1100;               // 후광이 최대로 차오르는 시간
+
   // 물리 시뮬레이션 활성화
   let animationFrameId: number | null = null;
 
@@ -568,6 +579,31 @@
   }
 
   // 글자 드래그 시작
+  // 체온 글로우 정리 (타이머/RAF 취소 + 상태 리셋).
+  function cancelHold() {
+    if (holdTimer !== null) { clearTimeout(holdTimer); holdTimer = null; }
+    if (holdRaf !== null) { cancelAnimationFrame(holdRaf); holdRaf = null; }
+    heldItemId = null;
+    holdGlow = 0;
+  }
+
+  // 길게 누름이 확정되면 흰 후광을 0→1로 서서히 차오르게 한다(제자리, 위치 이동 없음).
+  function startHoldGlow(itemId: number) {
+    holdTimer = null;
+    heldItemId = itemId;
+    let startTs: number | null = null;
+    const ramp = (ts: number) => {
+      if (startTs === null) startTs = ts;
+      holdGlow = Math.min((ts - startTs) / HOLD_RAMP_MS, 1);
+      if (holdGlow < 1 && heldItemId === itemId) {
+        holdRaf = requestAnimationFrame(ramp);
+      } else {
+        holdRaf = null;
+      }
+    };
+    holdRaf = requestAnimationFrame(ramp);
+  }
+
   function handleItemDragStart(event: MouseEvent | TouchEvent, itemId: number) {
     event.preventDefault();
     event.stopPropagation();
@@ -594,6 +630,12 @@
         ? { ...t, isDragging: true, velocityX: 0, velocityY: 0 }
         : t
     );
+
+    // 체온 글로우 후보: 정지 길게누름 감지 시작 (움직이면 handleGlobalDragMove에서 취소)
+    cancelHold();
+    holdStartX = coords.x;
+    holdStartY = coords.y;
+    holdTimer = setTimeout(() => startHoldGlow(itemId), HOLD_DELAY_MS);
   }
 
   // 글자 드래그 이동 (전역)
@@ -603,6 +645,12 @@
       event.preventDefault();
       const coords = getEventCoords(event);
       if (!coords) return;
+
+      // 체온 글로우: 일정 이상 움직이면 드래그로 간주하고 hold 취소
+      if ((heldItemId !== null || holdTimer !== null) &&
+          Math.hypot(coords.x - holdStartX, coords.y - holdStartY) > HOLD_MOVE_THRESHOLD) {
+        cancelHold();
+      }
 
       const newPos = pixelToPercent(coords.x - dragOffsetX, coords.y - dragOffsetY);
       const now = Date.now();
@@ -682,6 +730,18 @@
   // 글자 드래그 종료 (전역)
   function handleGlobalDragEnd(event: MouseEvent | TouchEvent) {
     if (draggedItemId !== null) {
+      // 체온 글로우 릴리스: hold이 활성이었으면 글자에서 풍성한 하트를 터뜨린다(던지기 아님)
+      if (heldItemId !== null) {
+        const heldItem = textItems.find(t => t.id === heldItemId);
+        if (heldItem) {
+          const center = percentToPixel(heldItem.positionX, heldItem.positionY);
+          const bursts = 1 + Math.round(holdGlow * 3); // 후광 세기에 비례해 1~4회
+          for (let b = 0; b < bursts; b++) {
+            heartEffects = [...heartEffects, { id: nextHeartId++, x: center.x, y: center.y }];
+          }
+        }
+      }
+
       // 현재 위치도 이력에 추가
       const coords = getEventCoords(event);
       if (coords) {
@@ -707,6 +767,7 @@
       draggedItemId = null;
       dragHistory = [];  // 이력 초기화
     }
+    cancelHold();  // 누름 종료 시 hold 후보/글로우 정리 (빠른 탭-릴리스 포함)
     handleBackgroundDragEnd();
   }
 
@@ -1040,6 +1101,9 @@
       echoTimers = [];
       // 디졸브 타이머 정리
       if (dissolveTimer !== null) clearTimeout(dissolveTimer);
+      // 체온 글로우 타이머/RAF 정리
+      if (holdTimer !== null) clearTimeout(holdTimer);
+      if (holdRaf !== null) cancelAnimationFrame(holdRaf);
     };
   });
 </script>
@@ -1112,7 +1176,7 @@
       ></div>
     {/if}
     <h1
-      style="font-family: {fonts[item.fontIndex]}; color: {currentTheme.textColors[item.colorIndex]}; font-size: {item.fontSize}vh; left: {item.positionX}%; top: {item.positionY}%; transform: translate(-50%, -50%); {item.isDragging ? 'cursor: grabbing; z-index: 100;' : 'cursor: grab;'}"
+      style="font-family: {fonts[item.fontIndex]}; color: {currentTheme.textColors[item.colorIndex]}; font-size: {item.fontSize}vh; left: {item.positionX}%; top: {item.positionY}%; transform: translate(-50%, -50%); {item.isDragging ? 'cursor: grabbing; z-index: 100;' : 'cursor: grab;'} {item.id === heldItemId ? `text-shadow: 0 0 ${Math.round(6 + holdGlow * 26)}px rgba(255,255,255,${(0.25 + holdGlow * 0.6).toFixed(2)}), 0 0 ${Math.round(holdGlow * 50)}px rgba(255,255,255,${(holdGlow * 0.45).toFixed(2)});` : ''}"
       class="{animations[item.animationIndex]} {item.isDragging ? 'dragging' : ''}"
       on:mousedown={(e) => handleItemDragStart(e, item.id)}
       on:touchstart={(e) => handleItemDragStart(e, item.id)}

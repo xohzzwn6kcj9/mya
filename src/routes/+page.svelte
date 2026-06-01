@@ -10,7 +10,7 @@
   import BokehField from '$lib/components/BokehField.svelte';
   import { initAudioOnFirstGesture, muted } from '$lib/audio/audio';
   import { soundSkinFor } from '$lib/audio/soundSkins';
-  import { playLetterVoice } from '$lib/audio/voice';
+  import { playLetterVoice, playLoveMelody } from '$lib/audio/voice';
 
   // 잔상 위치 타입
   interface TrailPosition {
@@ -437,19 +437,26 @@
     // 잔향 메아리 생성 (newItems가 확정된 시점)
     spawnEchoes(newItems);
 
-    // F1: 각 글자에 대해 먀의 목소리 재생 (음색은 현재 테마).
+    // 사운드 재생 (음색은 현재 테마).
     // AudioContext는 위 initAudioOnFirstGesture가 만든 것을 재사용하며, 없으면 무음.
+    // F2: 이번 탭에 '사랑해'(special)가 하나라도 있으면 숨은 멜로디만 재생하고,
+    //     아니면 F1처럼 각 글자에 일반 목소리를 재생한다(이중 재생 방지).
     const skin = soundSkinFor(currentTheme.id as ThemeId);
-    for (const item of newItems) {
-      playLetterVoice(
-        {
-          colorIndex: item.colorIndex,
-          fontSize: item.fontSize,
-          positionX: item.positionX,
-          showMyu: item.showMyu,
-        },
-        skin
-      );
+    const hasSpecial = newItems.some((it) => it.showSpecialMessage);
+    if (hasSpecial) {
+      playLoveMelody(skin);
+    } else {
+      for (const item of newItems) {
+        playLetterVoice(
+          {
+            colorIndex: item.colorIndex,
+            fontSize: item.fontSize,
+            positionX: item.positionX,
+            showMyu: item.showMyu,
+          },
+          skin
+        );
+      }
     }
 
     textItems = newItems;

@@ -15,6 +15,10 @@ node_modules
 .idea/
 .claude/
 
+# 둘만의 비밀 사전 (부부 카톡 추출 일화 — 로컬 전용, 절대 커밋 금지)
+# .ts = 난독 블롭(번들용), .json = 평문 마스터(편집용). 둘 다 커밋 금지.
+src/lib/config/myaLexicon.private.*
+
 # Git worktree
 .worktree/
 

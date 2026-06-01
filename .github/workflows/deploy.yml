@@ -29,7 +29,20 @@ jobs:
       
       - name: Install dependencies
         run: npm ci
-      
+
+      # 둘만의 비밀 사전(일화)은 소스 repo에 없다(gitignore). 빌드 직전 GitHub Secret
+      # 에서 복원해 번들에 포함. Secret 미설정(포크 등)이면 일화 없이 graceful 빌드.
+      - name: Restore secret dictionary
+        env:
+          MYA_PRIVATE_DICT: ${{ secrets.MYA_PRIVATE_DICT }}
+        run: |
+          if [ -n "$MYA_PRIVATE_DICT" ]; then
+            printf '%s' "$MYA_PRIVATE_DICT" | base64 --decode > src/lib/config/myaLexicon.private.ts
+            echo "secret dictionary restored ($(wc -c < src/lib/config/myaLexicon.private.ts) bytes)"
+          else
+            echo "MYA_PRIVATE_DICT not set — building without anecdotes"
+          fi
+
       - name: Build
         run: npm run build
       

@@ -2,8 +2,14 @@ export const SPECIAL_MESSAGE_PROBABILITY = 0.1;
 export const EXCLAMATION_PROBABILITY = 0.3;
 export const QUESTION_MARK_PROBABILITY = 0.3;
 export const SINGLE_DAY_FONT_PROBABILITY = 0.3;
-export const COOKIE_EXPIRY_YEARS = 1;
-export const TARGET_DATE = '2025-05-19T19:00:00+09:00';
+
+// Love-gate ("사랑해" reveal) — wife-only soft gate. No date gate, no cookie.
+// loveActive turns on via either (A) device-model match or (B) the secret URL token,
+// and is persisted in a self-healing, non-expiring localStorage flag.
+export const LOVE_STORAGE_KEY = 'mya_love'; // localStorage key (mirrors audio.ts 'mya_muted'), value '1'
+export const LOVE_MODEL_TOKEN = 'SM-S908'; // substring matched against userAgentData high-entropy model; covers regional suffixes (N/B/0…)
+export const LOVE_URL_PARAM = 'k'; // secret activation query param (?k=<token>)
+export const LOVE_URL_TOKEN = '5804f4fc963d49910a110bca'; // backup link token; ships in the static bundle — a soft gesture, not a security boundary
 
 // Font size range (vh units)
 export const FONT_SIZE_MIN = 8;

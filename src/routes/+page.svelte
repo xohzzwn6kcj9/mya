@@ -3,7 +3,7 @@
   import { fonts, animations } from '$lib/config/displayOptions';
   import { getRandomIndex } from '$lib/utils/styleUtils';
   import { selectTheme, selectDifferentTheme, shouldChangeTheme, type ThemeId, type Theme } from '$lib/utils/themeUtils';
-  import { isTargetDevice, shouldSetCookie, setCookie, hasLoveCookie } from '$lib/utils/userContextUtils';
+  import { hasLoveFlag, setLoveFlag, hasLoveToken, resolveWifeDevice } from '$lib/utils/userContextUtils';
   import { SPECIAL_MESSAGE_PROBABILITY, EXCLAMATION_PROBABILITY, QUESTION_MARK_PROBABILITY, SINGLE_DAY_FONT_PROBABILITY, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from '$lib/constants';
   import '$lib/styles/animations.css';
   import HeartBubbles from '$lib/components/HeartBubbles.svelte';
@@ -172,6 +172,10 @@
   // 첫 제스처에서 오디오를 1회만 초기화하기 위한 가드 플래그
   let audioInitialized = false;
 
+  // 사랑해-게이트(와이프 전용): 영구 플래그/비밀 링크/와이프 기기 중 하나라도 충족 시 true.
+  // onMount에서 1회 해소(비동기 모델 체크 포함)하고, createTextItem이 매 탭 이 값을 동기로 읽는다.
+  let loveActive = false;
+
   function removeHeartEffect(id: number) {
     heartEffects = heartEffects.filter(effect => effect.id !== id);
   }
@@ -336,7 +340,7 @@
     const colorIndex = getRandomIndex(currentTheme.textColors.length);
 
     // 특별 메시지, 느낌표, 물음표 (위치 계산 전에 결정)
-    const showSpecialMessage = hasLoveCookie() && Math.random() < SPECIAL_MESSAGE_PROBABILITY;
+    const showSpecialMessage = loveActive && Math.random() < SPECIAL_MESSAGE_PROBABILITY;
     const showMyu = isMyu;  // 파라미터로 전달받음
     const showExclamation = Math.random() < EXCLAMATION_PROBABILITY;
     // 물음표는 사랑해가 아닐 때만 적용
@@ -1130,9 +1134,26 @@
       document.head.appendChild(link);
     });
 
-    // 쿠키 설정
-    if (shouldSetCookie()) {
-      setCookie();
+    // 사랑해-게이트 해소 (1회):
+    // 1) 영구 플래그가 있으면 동기로 즉시 활성 (재방문 시 비동기 레이스 없음)
+    loveActive = hasLoveFlag();
+    // 2) 비밀 링크(?k=<토큰>) 진입이면 활성 + 플래그 기록 후 쿼리 제거 (/mya base·hash 보존)
+    const loveParams = new URL(location.href).searchParams;
+    if (hasLoveToken(loveParams)) {
+      loveActive = true;
+      setLoveFlag();
+      history.replaceState(null, '', location.pathname + location.hash);
+    }
+    // 3) 아직 비활성일 때만 와이프 기기 비동기 판별 → 활성 + 자가복구.
+    //    이미 플래그/링크로 켜졌으면 매 방문 getHighEntropyValues 호출을 생략하고,
+    //    플래그가 지워졌을 때만 다시 돌아 자가복구한다(동작 동일, 호출만 절약).
+    if (!loveActive) {
+      resolveWifeDevice().then((isWife) => {
+        if (isWife) {
+          loveActive = true;
+          setLoveFlag();
+        }
+      });
     }
 
     // cleanup

@@ -147,3 +147,80 @@ export function playLoveMelody(skin: SoundSkin): void {
     // 오디오 미지원/컨텍스트 실패 시 무음으로 degrade (정책: graceful)
   }
 }
+
+// 던지고 부딪힐 때의 짧은 충돌음 (벽 반사 / 글자간 충돌 공용).
+// playLetterVoice/playLoveMelody와 동일 인프라(getAudioContext/getMasterGain) 위에서
+// 이미 만들어진 컨텍스트만 소비한다 — 여기서 AudioContext를 절대 생성하지 않는다.
+// 음색: 질량(fontSize²) 역매핑 — 큰 글자는 둔탁(저음·저컷오프), 작은 글자는 또랑(고음·고컷오프).
+// 볼륨·길이·진동 세기: impactSpeed 비례. 모든 throttle/임계값은 호출자(+page.svelte)가 책임진다.
+//
+// @param impactSpeed 충돌 세기 (물리의 vw/vh-%/frame 단위, 정규화되지 않음 — 느리면 <1, 강하면 수 단위)
+// @param fontSize 충돌 글자 크기(vh, FONT_SIZE_MIN..FONT_SIZE_MAX) — 음색 결정
+export function playCollision(impactSpeed: number, fontSize: number): void {
+  const audio = getAudioContext();
+  if (!audio) return; // SSR/미지원/미탭 → 무음 graceful
+
+  try {
+    const master = getMasterGain();
+    if (!master) return; // masterGain 미생성 시 연결 대상 없음 → 무음
+
+    // ── 입력 정규화 ── impactSpeed는 정규화되지 않은 물리 단위라 0~8로 클램프.
+    const speed = Math.min(Math.max(impactSpeed, 0), 8);
+    // fontSize 0~1 정규화 (0=작은 글자, 1=큰 글자). 음색 역매핑의 기준.
+    const fNorm = clamp01((fontSize - FONT_SIZE_MIN) / (FONT_SIZE_MAX - FONT_SIZE_MIN));
+
+    // ── 음정/컷오프: 질량 역매핑 (큰 글자 둔탁, 작은 글자 또랑) ──
+    // 큰 글자일수록 낮은 기본 주파수·낮은 lowpass 컷오프 → 둔탁한 'tok'.
+    const baseFreq = 140 + (1 - fNorm) * 660; // ~800Hz(작은) → ~140Hz(큰)
+    const cutoff = 600 + (1 - fNorm) * 5400; // ~6000Hz(작은, 밝음) → ~600Hz(큰, 둔탁)
+
+    // ── 엔벨로프 길이: impactSpeed 비례 (약 40ms 약한 탭 → 약 140ms 강한 충돌) ──
+    const t0 = audio.currentTime;
+    const dur = 0.04 + speed * 0.012;
+
+    // ── 음원: 짧은 white-noise 버스트 → lowpass → 게인 (물리적 충격음에 가까운 'tok') ──
+    const frames = Math.max(1, Math.ceil(audio.sampleRate * dur));
+    const buffer = audio.createBuffer(1, frames, audio.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < frames; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const src = audio.createBufferSource();
+    src.buffer = buffer;
+
+    const filter = audio.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(cutoff, t0);
+    // baseFreq를 살짝 반영해 큰 글자에서 저역이 더 도드라지게 (질량감 강화).
+    filter.Q.setValueAtTime(0.7 + (1 - fNorm) * 0.6, t0);
+
+    // ── 게인 엔벨로프: 볼륨은 impactSpeed 비례, 상한 0.5로 동시다발 클리핑 방지 ──
+    const g = audio.createGain();
+    const vol = Math.min(0.04 + speed * 0.06, 0.5);
+    g.gain.setValueAtTime(vol, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+    // 체인: src → filter → g → masterGain (반드시 master 버스 경유 → F0 뮤트/마스터볼륨 적용).
+    src.connect(filter).connect(g).connect(master);
+    src.start(t0);
+    src.stop(t0 + dur);
+    src.onended = () => {
+      try {
+        src.disconnect();
+        filter.disconnect();
+        g.disconnect();
+      } catch {
+        // 정리 실패는 무시 (이미 끊긴 노드 등)
+      }
+    };
+
+    // ── 햅틱: master 버스를 안 거치므로 뮤트 시 진동도 멈춘다 (vibrate 미지원이면 no-op) ──
+    // 8ms(약한 탭) → 25ms(강한 충돌), impactSpeed 비례.
+    if (!get(muted) && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      const ms = Math.round(Math.min(8 + speed * 6, 25));
+      navigator.vibrate(ms);
+    }
+  } catch {
+    // 오디오 미지원/컨텍스트 실패 시 무음·무진동으로 degrade (정책: graceful)
+  }
+}

@@ -10,7 +10,7 @@
   import BokehField from '$lib/components/BokehField.svelte';
   import { initAudioOnFirstGesture, muted } from '$lib/audio/audio';
   import { soundSkinFor } from '$lib/audio/soundSkins';
-  import { playLetterVoice, playLoveMelody } from '$lib/audio/voice';
+  import { playLetterVoice, playLoveMelody, playCollision } from '$lib/audio/voice';
 
   // 잔상 위치 타입
   interface TrailPosition {
@@ -122,6 +122,14 @@
   const BOUNCE_DAMPING = 0.5;  // 벽 반사 시 에너지 손실 - 벽에 부딪히면 확 느려짐
   const THROW_MULTIPLIER = 1.2;  // 던질 때 속도 배수 - 빠르게 던져짐
   const COLLISION_RESTITUTION = 0.7;  // 글자간 충돌 반발계수 (0 = 비탄성, 1 = 완전탄성)
+
+  // 충돌음 throttle 상태 (프레임당 최대 3회, 프레임 경계는 updatePhysics 진입마다 리셋)
+  // ※ 일반 let — textItems와 무관하므로 변경해도 $: 물리 가드를 재트리거하지 않는다.
+  let collisionSoundFrameId = 0;            // requestAnimationFrame마다 증가하는 프레임 카운터
+  let collisionSoundsThisFrame = 0;         // 현재 프레임에서 재생한 충돌음 수
+  const COLLISION_SOUNDS_PER_FRAME = 3;     // 프레임당 최대 충돌음 (폭주 방지)
+  const MIN_WALL_IMPACT = 0.25;             // 이 미만 벽 반사 속도는 무음 (미세 떨림 무시)
+  const MIN_LETTER_IMPACT = 0.3;            // 이 미만 글자간 상대속도차는 무음
 
   // 글자 드래그 상태
   let draggedItemId: number | null = null;
@@ -810,10 +818,23 @@
     return [];
   }
 
+  // 충돌음 게이트: 임계값/프레임상한 통과 시에만 playCollision 호출 (위치·속도 불변).
+  // playCollision 내부에서 뮤트/SSR/미지원이 모두 graceful — throw하지 않는다.
+  function emitCollisionSound(impact: number, fontSize: number, minImpact: number) {
+    if (impact < minImpact) return;                                      // 미세 충돌 무시
+    if (collisionSoundsThisFrame >= COLLISION_SOUNDS_PER_FRAME) return;  // 프레임당 상한
+    collisionSoundsThisFrame++;
+    playCollision(impact, fontSize);
+  }
+
   // 물리 시뮬레이션 업데이트
   function updatePhysics() {
     let hasMovingItems = false;
     const aspectRatio = window.innerWidth / window.innerHeight;
+
+    // 충돌음 프레임 경계: 매 rAF tick마다 카운터 리셋 ('프레임당 최대 3회' 정확히 추적)
+    collisionSoundFrameId++;
+    collisionSoundsThisFrame = 0;
 
     // 1단계: 위치 업데이트 및 벽 충돌 처리
     textItems = textItems.map(item => {
@@ -849,18 +870,22 @@
       // 좌우 벽 반사
       if (newX - halfWidthVw < 0) {
         newX = halfWidthVw;
+        emitCollisionSound(Math.abs(newVelX), item.fontSize, MIN_WALL_IMPACT); // 반사 직전 속도 크기
         newVelX = -newVelX * BOUNCE_DAMPING;
       } else if (newX + halfWidthVw > 100) {
         newX = 100 - halfWidthVw;
+        emitCollisionSound(Math.abs(newVelX), item.fontSize, MIN_WALL_IMPACT); // 반사 직전 속도 크기
         newVelX = -newVelX * BOUNCE_DAMPING;
       }
 
       // 상하 벽 반사
       if (newY - halfHeightVh < 0) {
         newY = halfHeightVh;
+        emitCollisionSound(Math.abs(newVelY), item.fontSize, MIN_WALL_IMPACT); // 반사 직전 속도 크기
         newVelY = -newVelY * BOUNCE_DAMPING;
       } else if (newY + halfHeightVh > 100) {
         newY = 100 - halfHeightVh;
+        emitCollisionSound(Math.abs(newVelY), item.fontSize, MIN_WALL_IMPACT); // 반사 직전 속도 크기
         newVelY = -newVelY * BOUNCE_DAMPING;
       }
 
@@ -893,6 +918,16 @@
         if (collision.colliding) {
           // AABB 충돌 해결
           const result = resolveAABBCollision(item1, item2, collision);
+
+          // 충돌 전후 상대속도 변화량 = 충돌 세기(impact). 위치·속도는 아래에서 result로 그대로 대입.
+          // item1/item2는 아직 충돌 전 속도를 보유 (resolveAABBCollision은 새 객체만 반환, mutate 안 함).
+          const dvx = (item1.velocityX - item2.velocityX) - (result.vel1.x - result.vel2.x);
+          const dvy = (item1.velocityY - item2.velocityY) - (result.vel1.y - result.vel2.y);
+          const impact = Math.sqrt(dvx * dvx + dvy * dvy);
+          // 더 큰(둔탁한) 글자 기준으로 음색 결정.
+          // ※ approaching 가드가 false면 result 속도 = 입력 속도라 impact≈0 → MIN_LETTER_IMPACT가 무음 처리.
+          const hitFontSize = Math.max(item1.fontSize, item2.fontSize);
+          emitCollisionSound(impact, hitFontSize, MIN_LETTER_IMPACT);
 
           // 속도 및 위치 업데이트
           updatedItems[i] = {

@@ -8,6 +8,7 @@
   import '$lib/styles/animations.css';
   import HeartBubbles from '$lib/components/HeartBubbles.svelte';
   import BokehField from '$lib/components/BokehField.svelte';
+  import { initAudioOnFirstGesture, muted } from '$lib/audio/audio';
 
   // 잔상 위치 타입
   interface TrailPosition {
@@ -133,6 +134,9 @@
 
   // 물리 시뮬레이션 활성화
   let animationFrameId: number | null = null;
+
+  // 첫 제스처에서 오디오를 1회만 초기화하기 위한 가드 플래그
+  let audioInitialized = false;
 
   function removeHeartEffect(id: number) {
     heartEffects = heartEffects.filter(effect => effect.id !== id);
@@ -363,6 +367,12 @@
   }
 
   function handleClick(event: MouseEvent | TouchEvent) {
+    // 오디오 진입 의식: 첫 사용자 제스처에서 1회만 AudioContext 생성/resume
+    if (!audioInitialized) {
+      audioInitialized = true;
+      initAudioOnFirstGesture();
+    }
+
     // 터치/클릭 좌표 추출
     let clientX: number, clientY: number;
     if ('touches' in event && event.touches.length > 0) {
@@ -1010,6 +1020,14 @@
   {/each}
 </main>
 
+<!-- 뮤트 토글: main의 형제로 배치해 전체화면 탭(handleClick)과 분리, stopPropagation으로 방어 -->
+<button
+  class="mute-toggle"
+  type="button"
+  aria-label={$muted ? '소리 켜기' : '소리 끄기'}
+  on:click|stopPropagation={() => muted.update((m) => !m)}
+>{$muted ? '🔇' : '🔊'}</button>
+
 {#each heartEffects as effect (effect.id)}
   <HeartBubbles x={effect.x} y={effect.y} heartColors={currentTheme.heartColors} on:complete={() => removeHeartEffect(effect.id)} />
 {/each}
@@ -1087,6 +1105,31 @@
     transform-origin: center center;
     filter: blur(8px);
     z-index: 1;
+  }
+
+  /* 뮤트 토글 버튼 — 우하단 고정, 낮은 opacity, 정적(위치이동 애니메이션 없음) */
+  .mute-toggle {
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    opacity: 0.4;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 200; /* 드래그 글자 z-index:100 보다 위 */
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .mute-toggle:hover,
+  .mute-toggle:focus-visible {
+    opacity: 0.8;
   }
 
   /* 디버깅용 화면 경계 박스 */

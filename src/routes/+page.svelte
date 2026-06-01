@@ -8,6 +8,7 @@
   import '$lib/styles/animations.css';
   import HeartBubbles from '$lib/components/HeartBubbles.svelte';
   import BokehField from '$lib/components/BokehField.svelte';
+  import { variantsFor, pickVariantIndex } from '$lib/config/myaLexicon';
   import { initAudioOnFirstGesture, muted } from '$lib/audio/audio';
   import { soundSkinFor } from '$lib/audio/soundSkins';
   import { playLetterVoice, playLoveMelody, playCollision } from '$lib/audio/voice';
@@ -36,6 +37,7 @@
     showExclamation: boolean;
     showQuestionMark: boolean;
     exclamationFirst: boolean;  // !?와 ?! 순서 결정
+    variantIndex: number;  // 먀/뮤/사랑해 계열 내 변형 폼 인덱스 (사투리·먀사전)
     trail: TrailPosition[];  // 잔상 효과용 이전 위치들
   }
 
@@ -115,6 +117,7 @@
     showExclamation: false,
     showQuestionMark: false,
     exclamationFirst: true,
+    variantIndex: 0,
     trail: []
   }];
 
@@ -219,13 +222,20 @@
     return 0;
   }
 
-  // 메시지 문자열 조합 (base + 부호, exclamationFirst 순서 반영)
+  // 메시지 문자열 조합 (변형 폼 base + 부호, exclamationFirst 순서 반영)
   function buildMessageText(item: TextItem): string {
-    const base = item.showSpecialMessage ? '사랑해' : (item.showMyu ? '뮤' : '먀');
+    const variants = variantsFor(item.showSpecialMessage, item.showMyu);
+    const base = (variants[item.variantIndex] ?? variants[0]).text;
     const exclamation = item.showExclamation ? '!' : '';
     const question = item.showQuestionMark ? '?' : '';
     const marks = item.exclamationFirst ? exclamation + question : question + exclamation;
     return base + marks;
+  }
+
+  // 먀-사전: 글자의 변형 폼에 대응하는 뜻 (롱프레스 시 표시)
+  function lookupMeaning(item: TextItem): string {
+    const variants = variantsFor(item.showSpecialMessage, item.showMyu);
+    return (variants[item.variantIndex] ?? variants[0]).meaning;
   }
 
   // 경계 박스 타입
@@ -324,6 +334,8 @@
     const showQuestionMark = !showSpecialMessage && Math.random() < QUESTION_MARK_PROBABILITY;
     // !?와 ?! 순서 랜덤 결정
     const exclamationFirst = Math.random() < 0.5;
+    // 사투리: 먀/뮤/사랑해 계열 내에서 실제 카톡 빈도 가중으로 변형 폼 추첨
+    const variantIndex = pickVariantIndex(variantsFor(showSpecialMessage, showMyu));
 
     // 최소 폰트 크기가 들어갈 수 있는 여유 확보
     const minMarginY = FONT_SIZE_MIN / 2 + ANIMATION_MARGIN;
@@ -379,6 +391,7 @@
         showExclamation,
         showQuestionMark,
         exclamationFirst,
+        variantIndex,
         trail: []
       };
 
@@ -1088,6 +1101,9 @@
     startPhysicsIfNeeded();
   }
 
+  // 먀-사전 롱프레스: 현재 누르고 있는 글자 (뜻풀이 툴팁용)
+  $: heldItem = heldItemId !== null ? textItems.find((t) => t.id === heldItemId) : null;
+
   onMount(() => {
     // 뷰포트 높이 설정 (모바일 브라우저 대응)
     function setViewportHeight() {
@@ -1204,6 +1220,15 @@
       {buildMessageText(item)}
     </h1>
   {/each}
+
+  <!-- 먀-사전 뜻풀이 툴팁 (글자를 길게 누르면 떠오름, 체온 글로우와 연동) -->
+  {#if heldItem}
+    <div
+      class="mya-meaning"
+      class:above={heldItem.positionY > 70}
+      style="left: {heldItem.positionX}%; top: {heldItem.positionY}%; --off: {heldItem.fontSize / 2 + 1.5}vh; opacity: {Math.min(holdGlow * 1.6, 1)};"
+    >{lookupMeaning(heldItem)}</div>
+  {/if}
 </main>
 
 <!-- 뮤트 토글: main의 형제로 배치해 전체화면 탭(handleClick)과 분리, stopPropagation으로 방어 -->
@@ -1258,6 +1283,31 @@
     .theme-dissolve {
       transition: none;
     }
+  }
+
+  /* 먀-사전 뜻풀이 툴팁 (롱프레스 시 글자 옆에 떠오름) */
+  .mya-meaning {
+    position: absolute;
+    transform: translate(-50%, var(--off, 8vh));
+    max-width: 70vw;
+    padding: 6px 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.88);
+    color: #4a4a4a;
+    font-size: 14px;
+    line-height: 1.35;
+    text-align: center;
+    pointer-events: none;
+    z-index: 150;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+    transition: opacity 0.2s ease;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+  }
+
+  /* 화면 아래쪽 글자는 툴팁을 위로 띄움 */
+  .mya-meaning.above {
+    transform: translate(-50%, calc(-100% - var(--off, 8vh)));
   }
 
   h1 {

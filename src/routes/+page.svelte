@@ -165,6 +165,10 @@
   const HOLD_DELAY_MS = 350;               // 이 시간 정지 유지 시 hold 모드 진입
   const HOLD_MOVE_THRESHOLD = 10;          // px, 이 이상 움직이면 드래그로 간주(hold 취소)
   const HOLD_RAMP_MS = 1100;               // 후광이 최대로 차오르는 시간
+  // 길게 누름 툴팁(먀-사전 뜻풀이 + 일화) 비활성화 플래그.
+  // UI 재검토 + 일화 내용 직접 검수 위해 일단 OFF. 체온 글로우(후광)는 유지.
+  // 데이터/로더는 그대로라 true 로만 바꾸면 즉시 재개.
+  const SHOW_HOLD_TOOLTIP: boolean = false;
   let suppressNextClick = false;           // 체온 글로우 릴리스 직후 따라오는 합성 click 무시용
 
   // 물리 시뮬레이션 활성화
@@ -1261,7 +1265,7 @@
   {/each}
 
   <!-- 먀-사전 뜻풀이 툴팁 (글자를 길게 누르면 떠오름, 체온 글로우와 연동) -->
-  {#if heldItem}
+  {#if SHOW_HOLD_TOOLTIP && heldItem}
     <div
       class="mya-meaning"
       class:above={heldItem.positionY > 70}

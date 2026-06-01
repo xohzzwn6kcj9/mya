@@ -18,6 +18,11 @@ node_modules
 # Git worktree
 .worktree/
 
+# Playwright MCP 검증 아티팩트 (스크린샷/스냅샷)
+.playwright-mcp/
+/*.png
+!static/*.png
+
 # OS
 .DS_Store
 Thumbs.db

@@ -1,4 +1,0 @@
-- generic [ref=e2]:
-  - main [ref=e3] [cursor=pointer]:
-    - heading "먀" [level=1] [ref=e4]
-  - button "소리 끄기" [ref=e5] [cursor=pointer]: 🔊

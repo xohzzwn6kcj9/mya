@@ -9,7 +9,6 @@
   import HeartBubbles from '$lib/components/HeartBubbles.svelte';
   import BokehField from '$lib/components/BokehField.svelte';
   import { variantsFor, pickVariantIndex, type MyaVariant } from '$lib/config/myaLexicon';
-  import { anecdoteFor } from '$lib/config/secretDictionary';
   import { initAudioOnFirstGesture, muted } from '$lib/audio/audio';
   import { soundSkinFor } from '$lib/audio/soundSkins';
   import { playLetterVoice, playLoveMelody, playCollision } from '$lib/audio/voice';
@@ -1125,10 +1124,6 @@
 
   // 먀-사전 롱프레스: 현재 누르고 있는 글자 (뜻풀이 툴팁용)
   $: heldItem = heldItemId !== null ? textItems.find((t) => t.id === heldItemId) : null;
-  // 비밀 사전: 사랑해-게이트(loveActive, 와이프 전용) 또는 dev 프리뷰일 때만 일화 노출.
-  // 공개 URL 일반 방문자는 일반 뜻만 본다 (파일/일화 없으면 자동 null).
-  $: heldAnecdote =
-    (loveActive || import.meta.env.DEV) && heldItem ? anecdoteFor(variantOf(heldItem).text) : null;
 
   onMount(() => {
     // 뷰포트 높이 설정 (모바일 브라우저 대응)
@@ -1269,15 +1264,8 @@
     <div
       class="mya-meaning"
       class:above={heldItem.positionY > 70}
-      class:has-anecdote={heldAnecdote}
       style="left: {heldItem.positionX}%; top: {heldItem.positionY}%; --off: {heldItem.fontSize / 2 + 1.5}vh; opacity: {Math.min(holdGlow * 1.6, 1)};"
-    >
-      <span class="mya-meaning-def">{lookupMeaning(heldItem)}</span>
-      {#if heldAnecdote}
-        <span class="mya-anecdote-title">{heldAnecdote.title}</span>
-        <span class="mya-anecdote-story">{heldAnecdote.story}</span>
-      {/if}
-    </div>
+    >{lookupMeaning(heldItem)}</div>
   {/if}
 </main>
 
@@ -1358,34 +1346,6 @@
   /* 화면 아래쪽 글자는 툴팁을 위로 띄움 */
   .mya-meaning.above {
     transform: translate(-50%, calc(-100% - var(--off, 8vh)));
-  }
-
-  /* 일화가 딸린 툴팁은 조금 더 넓게 (1~2문장 가독) */
-  .mya-meaning.has-anecdote {
-    max-width: 80vw;
-    padding: 10px 16px;
-  }
-
-  .mya-meaning-def {
-    display: block;
-    font-weight: 500;
-  }
-
-  /* 둘만의 비밀 사전 일화 — 뜻 아래에 다정하게 피어남 */
-  .mya-anecdote-title {
-    display: block;
-    margin-top: 7px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #c2185b;
-  }
-
-  .mya-anecdote-story {
-    display: block;
-    margin-top: 3px;
-    font-size: 12.5px;
-    line-height: 1.45;
-    color: #5a5a5a;
   }
 
   h1 {

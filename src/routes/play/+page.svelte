@@ -8,9 +8,9 @@
   import BokehField from '$lib/components/BokehField.svelte';
   import { initAudioOnFirstGesture, muted } from '$lib/audio/audio';
   import { soundSkinFor } from '$lib/audio/soundSkins';
-  import { playLetterVoice, playCollision } from '$lib/audio/voice';
-  import { randomBaseWord } from '$lib/game/mergeTree';
-  import { FONT_SIZE_BY_TIER } from '$lib/game/constants';
+  import { playLetterVoice, playCollision, playMerge } from '$lib/audio/voice';
+  import { randomBaseWord, mergeResult, type MergeOutcome } from '$lib/game/mergeTree';
+  import { FONT_SIZE_BY_TIER, CONSOLATION_FADE_MS } from '$lib/game/constants';
 
   // 잔상 위치
   interface TrailPosition {
@@ -34,6 +34,7 @@
     velocityY: number;
     isDragging: boolean;
     trail: TrailPosition[];
+    fadeOut?: boolean; // 꽝(3글자)이 잠깐 보인 뒤 사라지는 중인지
   }
 
   // 하트 이펙트
@@ -55,6 +56,8 @@
   const BOUNCE_DAMPING = 0.5;
   const THROW_MULTIPLIER = 1.2;
   const COLLISION_RESTITUTION = 0.7;
+  const MERGE_VELOCITY_DAMPING = 0.55; // 합쳐진 글자는 두 속도 평균을 줄여 차분히 안착
+  const CONSOLATION_FADEOUT_MS = 450; // 꽝 사라질 때 opacity 트랜지션 길이(단일 소스 → CSS --fade-ms)
 
   // 충돌음 throttle (프레임당 최대 3회)
   let collisionSoundsThisFrame = 0;
@@ -76,6 +79,7 @@
   let nextHeartId = 0;
   let gameItems: GameItem[] = [];
   let heartEffects: HeartEffect[] = [];
+  let consolationTimers: ReturnType<typeof setTimeout>[] = []; // 꽝 페이드/제거 타이머 (정리용)
 
   let draggedItemId: number | null = null;
   let dragOffsetX = 0;
@@ -115,6 +119,33 @@
       isDragging: false,
       trail: []
     };
+  }
+
+  // 같은 글자 두 개가 합쳐진 결과 아이템 — 중점에서 두 속도의 평균(감쇠)으로 안착, 색은 승계.
+  function makeMergedItem(a: GameItem, b: GameItem, outcome: MergeOutcome): GameItem {
+    return makeItem({
+      text: outcome.text,
+      tier: outcome.tier,
+      positionX: (a.positionX + b.positionX) / 2,
+      positionY: (a.positionY + b.positionY) / 2,
+      velocityX: ((a.velocityX + b.velocityX) / 2) * MERGE_VELOCITY_DAMPING,
+      velocityY: ((a.velocityY + b.velocityY) / 2) * MERGE_VELOCITY_DAMPING,
+      colorIndex: a.colorIndex
+    });
+  }
+
+  function removeItem(id: number) {
+    gameItems = gameItems.filter((it) => it.id !== id);
+  }
+
+  // 꽝(3글자): CONSOLATION_FADE_MS 동안 보여준 뒤 부드럽게 사라뜨려 보드를 비운다.
+  function scheduleConsolationFade(id: number) {
+    const showTimer = setTimeout(() => {
+      gameItems = gameItems.map((it) => (it.id === id ? { ...it, fadeOut: true } : it));
+      const removeTimer = setTimeout(() => removeItem(id), CONSOLATION_FADEOUT_MS);
+      consolationTimers = [...consolationTimers, removeTimer];
+    }, CONSOLATION_FADE_MS);
+    consolationTimers = [...consolationTimers, showTimer];
   }
 
   // 글자가 화면 밖으로 나가지 않게 위치를 안전 마진 안으로 클램프
@@ -458,15 +489,33 @@
       return { ...item, positionX: newX, positionY: newY, velocityX: newVelX, velocityY: newVelY, trail: updateTrail(item) };
     });
 
-    // 2단계: 글자간 충돌 → 튕김 (머지는 커밋3에서)
+    // 2단계: 글자간 충돌 → 같은 글자면 합치기(머지), 아니면 튕김.
     const updated = [...gameItems];
+    const mergedIds = new Set<number>();
+    const mergeSpawns: GameItem[] = [];
     for (let i = 0; i < updated.length; i++) {
       for (let j = i + 1; j < updated.length; j++) {
         const item1 = updated[i];
         const item2 = updated[j];
+        if (mergedIds.has(item1.id) || mergedIds.has(item2.id)) continue; // 이 프레임에 이미 합쳐짐
         const collision = checkAABBCollision(getBoundingBox(item1), getBoundingBox(item2));
         if (!collision.colliding) continue;
 
+        const outcome = mergeResult(item1.text, item2.text);
+        if (outcome) {
+          // 같은 글자 → 합치기 (각 글자는 프레임당 한 번만 합쳐진다)
+          mergedIds.add(item1.id);
+          mergedIds.add(item2.id);
+          const merged = makeMergedItem(item1, item2, outcome);
+          mergeSpawns.push(merged);
+          playMerge(outcome.tier, skin);
+          if (outcome.tier === 3 && !outcome.isWin) scheduleConsolationFade(merged.id);
+          // outcome.isWin('사랑해') 승리 연출은 커밋4에서
+          hasMovingItems = true;
+          continue;
+        }
+
+        // 다른 글자 → 튕김
         const result = resolveAABBCollision(item1, item2, collision);
         const dvx = item1.velocityX - item2.velocityX - (result.vel1.x - result.vel2.x);
         const dvy = item1.velocityY - item2.velocityY - (result.vel1.y - result.vel2.y);
@@ -478,7 +527,8 @@
         hasMovingItems = true;
       }
     }
-    gameItems = updated;
+    gameItems =
+      mergedIds.size > 0 ? [...updated.filter((it) => !mergedIds.has(it.id)), ...mergeSpawns] : updated;
 
     const hasTrails = gameItems.some((t) => t.trail.length > 0);
     animationFrameId = hasMovingItems || hasTrails ? requestAnimationFrame(updatePhysics) : null;
@@ -523,13 +573,15 @@
     return () => {
       window.removeEventListener('resize', setViewportHeight);
       if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+      consolationTimers.forEach((t) => clearTimeout(t));
+      consolationTimers = [];
     };
   });
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
 <main
-  style="background: {displayGradient}"
+  style="background: {displayGradient}; --fade-ms: {CONSOLATION_FADEOUT_MS}ms"
   on:click={handleClick}
   on:mousedown={handleBackgroundDragStart}
   on:mousemove={handleGlobalDragMove}
@@ -559,7 +611,7 @@
       >{item.text}</span>
     {/each}
     <h1
-      style="font-family: {fonts[item.fontIndex]}; color: {currentTheme.textColors[item.colorIndex]}; font-size: {item.fontSize}vh; left: {item.positionX}%; top: {item.positionY}%; transform: translate(-50%, -50%); {item.isDragging ? 'cursor: grabbing; z-index: 100;' : 'cursor: grab;'}"
+      style="font-family: {fonts[item.fontIndex]}; color: {currentTheme.textColors[item.colorIndex]}; font-size: {item.fontSize}vh; left: {item.positionX}%; top: {item.positionY}%; transform: translate(-50%, -50%); opacity: {item.fadeOut ? 0 : 1}; {item.isDragging ? 'cursor: grabbing; z-index: 100;' : 'cursor: grab;'}"
       class="{animations[item.animationIndex]} {item.isDragging ? 'dragging' : ''}"
       on:mousedown={(e) => handleItemDragStart(e, item.id)}
       on:touchstart={(e) => handleItemDragStart(e, item.id)}
@@ -608,7 +660,8 @@
   h1 {
     margin: 0;
     user-select: none;
-    transition: color 0.2s ease, font-size 0.2s ease, filter 0.2s ease;
+    /* opacity 길이는 JS CONSOLATION_FADEOUT_MS를 단일 소스로 --fade-ms에 주입(아래 main) */
+    transition: color 0.2s ease, font-size 0.2s ease, filter 0.2s ease, opacity var(--fade-ms, 450ms) ease;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
     white-space: nowrap;
     text-align: center;

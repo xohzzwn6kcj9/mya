@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { base } from '$app/paths';
   import { fonts, animations } from '$lib/config/displayOptions';
   import { getRandomIndex } from '$lib/utils/styleUtils';
   import { selectTheme, selectDifferentTheme, shouldChangeTheme, type ThemeId, type Theme } from '$lib/utils/themeUtils';
@@ -1254,6 +1255,9 @@
   on:click|stopPropagation={() => muted.update((m) => !m)}
 >{$muted ? '🔇' : '🔊'}</button>
 
+<!-- 머지 게임(/play) 진입: 좌하단에 눈에 띄지 않게. main의 형제라 전체화면 탭과 분리(버블링 없음) -->
+<a class="play-link" href="{base}/play" aria-label="머지 게임">🎮</a>
+
 {#each heartEffects as effect (effect.id)}
   <HeartBubbles x={effect.x} y={effect.y} heartColors={currentTheme.heartColors} on:complete={() => removeHeartEffect(effect.id)} />
 {/each}
@@ -1371,6 +1375,32 @@
 
   .mute-toggle:hover,
   .mute-toggle:focus-visible {
+    opacity: 0.8;
+  }
+
+  /* 머지 게임 진입 링크 — 좌하단 고정, 낮은 opacity (뮤트 토글과 대칭) */
+  .play-link {
+    position: fixed;
+    bottom: 12px;
+    left: 12px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.4;
+    font-size: 20px;
+    line-height: 1;
+    text-decoration: none;
+    cursor: pointer;
+    z-index: 200;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .play-link:hover,
+  .play-link:focus-visible {
     opacity: 0.8;
   }
 

@@ -120,7 +120,7 @@
       fontIndex: getRandomIndex(fonts.length),
       colorIndex: opts.colorIndex ?? getRandomIndex(currentTheme.textColors.length),
       animationIndex: getRandomIndex(animations.length),
-      fontSize: opts.fontSize ?? FONT_SIZE_BY_TIER[opts.tier],
+      fontSize: opts.fontSize ?? sizeForTierVh(opts.tier, opts.text),
       positionX: opts.positionX,
       positionY: opts.positionY,
       velocityX: opts.velocityX ?? 0,
@@ -130,12 +130,19 @@
     };
   }
 
-  // 좁은 세로 화면(예: 갤럭시 S22U)에서 3글자(사랑해/꽝)가 가로로 넘치지 않도록, 글자 수·화면
-  // 너비에 맞춰 tier 기본 크기를 위에서만 줄인다(넓은 화면은 기본값 유지). 머지는 클라이언트에서만
-  // 일어나므로 window 사용 안전. JS fontSize 자체를 줄여 충돌 박스(물리)와 시각을 일치시킨다.
+  // 좁은 화면일수록 글자를 줄여 여유공간을 둔다(넓은 화면은 풀사이즈). 폰(좁고 긴 세로)에서 vh
+  // 기준 크기가 과해 보드가 북적이는 걸 완화. 기준 너비 이상은 1.0, 좁을수록 선형 축소(하한 적용).
+  const SIZE_SCALE_REF_WIDTH = 520; // px — 이 너비 이상은 풀사이즈(아이패드·데스크톱)
+  const SIZE_SCALE_MIN = 0.62; // 너무 작아지지 않게 하한
+  function viewportSizeScale(): number {
+    return Math.min(1, Math.max(SIZE_SCALE_MIN, window.innerWidth / SIZE_SCALE_REF_WIDTH));
+  }
+
+  // tier 표시 크기(vh): 화면 폭 스케일 적용 후, 3글자가 가로로 넘치지 않게 폭으로도 상한.
+  // JS fontSize 자체를 줄여 충돌 박스(물리)와 시각을 일치시킨다. (호출 시 window 필요 — 클라이언트)
   const CHAR_ADVANCE = 1.25; // 보수적 글자 폭 추정(폰트별 advance 상한 여유)
   function sizeForTierVh(tier: 1 | 2 | 3, text: string): number {
-    const base = FONT_SIZE_BY_TIER[tier];
+    const base = FONT_SIZE_BY_TIER[tier] * viewportSizeScale();
     const capPx = (window.innerWidth * 0.9) / (text.length * CHAR_ADVANCE);
     return Math.min(base, (capPx / window.innerHeight) * 100);
   }
@@ -230,10 +237,10 @@
   function spawnLetter(clientX: number, clientY: number) {
     const lineage = randomLineage();
     const text = baseFor(lineage, 1) + marksFor();
-    const fontSize = FONT_SIZE_BY_TIER[1];
+    const fontSize = sizeForTierVh(1, text);
     const raw = pixelToPercent(clientX, clientY);
     const pos = clampToBoard(raw.x, raw.y, fontSize);
-    const item = makeItem({ text, lineage, tier: 1, positionX: pos.x, positionY: pos.y });
+    const item = makeItem({ text, lineage, tier: 1, positionX: pos.x, positionY: pos.y, fontSize });
     gameItems = [...gameItems, item];
     playLetterVoice(
       { colorIndex: item.colorIndex, fontSize: item.fontSize, positionX: item.positionX, showMyu: lineage === 'myu' },
@@ -614,9 +621,8 @@
     startPhysicsIfNeeded();
   }
 
-  // 시작 보드: 던질 짝이 바로 보이게 먀·뮤 2쌍을 고정 위치(2×2)에 둔다.
-  // 위치를 고정해 정적 프리렌더(SSR)와 클라이언트가 일치한다(첫 페인트 좌표 점프 없음).
-  // 마크 없는 고정 텍스트로 시드(프리렌더/클라이언트 텍스트 일치). 마크는 탭 생성·머지부터.
+  // 시작 보드: 던질 짝이 바로 보이게 먀·뮤 2쌍을 고정 위치(2×2)에 둔다(마크 없는 기본형).
+  // onMount(클라이언트)에서 시드 → 화면 폭 스케일이 반영되고, 프리렌더(빈 보드)와 하이드레이션 불일치 없음.
   function seedBoard() {
     const seeds: { lineage: Lineage; text: string; x: number; y: number }[] = [
       { lineage: 'mya', text: '먀', x: 32, y: 38 },
@@ -626,8 +632,6 @@
     ];
     gameItems = seeds.map((s) => makeItem({ text: s.text, lineage: s.lineage, tier: 1, positionX: s.x, positionY: s.y }));
   }
-
-  seedBoard();
 
   onMount(() => {
     function setViewportHeight() {
@@ -642,6 +646,8 @@
       link.href = `https://fonts.googleapis.com/css2?family=${font.replaceAll(' ', '+')}&display=swap`;
       document.head.appendChild(link);
     });
+
+    seedBoard(); // 클라이언트에서 시드(화면 폭 스케일 반영)
 
     return () => {
       window.removeEventListener('resize', setViewportHeight);

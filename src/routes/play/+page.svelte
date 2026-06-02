@@ -108,6 +108,7 @@
     velocityX?: number;
     velocityY?: number;
     colorIndex?: number;
+    fontSize?: number; // tier 기본 크기 대신 명시(좁은 화면 폭 맞춤 등)
   }): GameItem {
     return {
       id: nextItemId++,
@@ -116,7 +117,7 @@
       fontIndex: getRandomIndex(fonts.length),
       colorIndex: opts.colorIndex ?? getRandomIndex(currentTheme.textColors.length),
       animationIndex: getRandomIndex(animations.length),
-      fontSize: FONT_SIZE_BY_TIER[opts.tier],
+      fontSize: opts.fontSize ?? FONT_SIZE_BY_TIER[opts.tier],
       positionX: opts.positionX,
       positionY: opts.positionY,
       velocityX: opts.velocityX ?? 0,
@@ -126,16 +127,42 @@
     };
   }
 
+  // 좁은 세로 화면(예: 갤럭시 S22U)에서 3글자(사랑해/꽝)가 가로로 넘치지 않도록, 글자 수·화면
+  // 너비에 맞춰 tier 기본 크기를 위에서만 줄인다(넓은 화면은 기본값 유지). 머지는 클라이언트에서만
+  // 일어나므로 window 사용 안전. JS fontSize 자체를 줄여 충돌 박스(물리)와 시각을 일치시킨다.
+  const CHAR_ADVANCE = 1.25; // 보수적 글자 폭 추정(폰트별 advance 상한 여유)
+  function sizeForTierVh(tier: 1 | 2 | 3, text: string): number {
+    const base = FONT_SIZE_BY_TIER[tier];
+    const capPx = (window.innerWidth * 0.9) / (text.length * CHAR_ADVANCE);
+    return Math.min(base, (capPx / window.innerHeight) * 100);
+  }
+
+  // 큰 글자(특히 3글자)가 화면 밖으로 삐져나오지 않게 중심을 글자 폭/높이 기준으로 클램프(%).
+  // sizeForTierVh가 글자 폭 ≤ 0.9×화면너비를 보장하므로 클램프 범위는 항상 유효하다.
+  function clampCenterForWord(xPct: number, yPct: number, fontVh: number, text: string) {
+    const fontPx = (fontVh / 100) * window.innerHeight;
+    const halfW = (text.length * fontPx * CHAR_ADVANCE) / 2;
+    const halfH = fontPx / 2 + (ANIMATION_MARGIN / 100) * window.innerHeight;
+    const clamp = (v: number, half: number, span: number) => Math.min(Math.max(v, half), span - half);
+    return {
+      x: (clamp((xPct / 100) * window.innerWidth, halfW, window.innerWidth) / window.innerWidth) * 100,
+      y: (clamp((yPct / 100) * window.innerHeight, halfH, window.innerHeight) / window.innerHeight) * 100
+    };
+  }
+
   // 같은 글자 두 개가 합쳐진 결과 아이템 — 중점에서 두 속도의 평균(감쇠)으로 안착, 색은 승계.
   function makeMergedItem(a: GameItem, b: GameItem, outcome: MergeOutcome): GameItem {
+    const fontSize = sizeForTierVh(outcome.tier, outcome.text);
+    const pos = clampCenterForWord((a.positionX + b.positionX) / 2, (a.positionY + b.positionY) / 2, fontSize, outcome.text);
     return makeItem({
       text: outcome.text,
       tier: outcome.tier,
-      positionX: (a.positionX + b.positionX) / 2,
-      positionY: (a.positionY + b.positionY) / 2,
+      positionX: pos.x,
+      positionY: pos.y,
       velocityX: ((a.velocityX + b.velocityX) / 2) * MERGE_VELOCITY_DAMPING,
       velocityY: ((a.velocityY + b.velocityY) / 2) * MERGE_VELOCITY_DAMPING,
-      colorIndex: a.colorIndex
+      colorIndex: a.colorIndex,
+      fontSize
     });
   }
 
@@ -812,7 +839,8 @@
   }
 
   .win-word {
-    font-size: 18vh;
+    /* 좁은 세로 화면에서 가로로 넘치지 않게 너비(vw)로도 상한 */
+    font-size: min(18vh, 26vw);
     color: #fff;
     text-shadow: 0 0 24px rgba(255, 255, 255, 0.9), 0 0 48px rgba(255, 255, 255, 0.6);
     user-select: none;

@@ -198,6 +198,10 @@
     if (gameState !== 'playing') return;
     gameState = 'won';
     wonText = winItem.text;
+    // 드래그 중 승리 시 승리 오버레이가 포인터 release를 가로채 handleGlobalDragEnd가 안 불리므로
+    // 여기서 드래그 상태를 정리한다(안 그러면 리셋 후에도 stale 상태로 상호작용이 꼬임).
+    draggedItemId = null;
+    dragHistory = [];
     playLoveMelody(skin);
     burstCelebrationHearts(winItem);
   }
@@ -212,12 +216,16 @@
     heartEffects = [...heartEffects, ...spots.map((p) => ({ id: nextHeartId++, x: p.x, y: p.y }))];
   }
 
-  // 다시 하기: 진행 중 타이머·하트를 정리하고 새 시드 보드로 리셋(테마는 세션 유지).
+  // 다시 하기: 진행 중 타이머·하트·드래그 상태를 정리하고 새 시드 보드로 리셋(테마는 세션 유지).
   function resetGame() {
     consolationTimers.forEach((t) => clearTimeout(t));
     consolationTimers = [];
     heartEffects = [];
     wonText = '';
+    draggedItemId = null;
+    dragHistory = [];
+    isBackgroundDragging = false;
+    suppressNextClick = false;
     gameState = 'playing';
     seedBoard();
   }
@@ -519,6 +527,11 @@
 
   // ── 물리 루프 ───────────────────────────────────────────────
   function updatePhysics() {
+    // 승리 화면에선 물리 정지 — 오버레이 뒤에서 추가 머지·사운드·움직임이 도는 걸 막는다(리셋 시 재개).
+    if (gameState !== 'playing') {
+      animationFrameId = null;
+      return;
+    }
     let hasMovingItems = false;
     const aspectRatio = window.innerWidth / window.innerHeight;
     collisionSoundsThisFrame = 0;

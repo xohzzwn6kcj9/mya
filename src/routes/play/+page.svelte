@@ -8,7 +8,7 @@
   import BokehField from '$lib/components/BokehField.svelte';
   import { initAudioOnFirstGesture, muted } from '$lib/audio/audio';
   import { soundSkinFor } from '$lib/audio/soundSkins';
-  import { playLetterVoice, playCollision, playMerge } from '$lib/audio/voice';
+  import { playLetterVoice, playCollision, playMerge, playLoveMelody } from '$lib/audio/voice';
   import { randomBaseWord, mergeResult, type MergeOutcome } from '$lib/game/mergeTree';
   import { FONT_SIZE_BY_TIER, CONSOLATION_FADE_MS } from '$lib/game/constants';
 
@@ -81,6 +81,10 @@
   let heartEffects: HeartEffect[] = [];
   let consolationTimers: ReturnType<typeof setTimeout>[] = []; // 꽝 페이드/제거 타이머 (정리용)
 
+  // 게임 상태: 'playing' → (사랑해 합성) 'won' → (다시 하기) 'playing'. 실패 상태는 없다.
+  let gameState: 'playing' | 'won' = 'playing';
+  let wonText = ''; // 승리 시 만들어진 글자(사랑해/사랑뮤) — 오버레이에 표시
+
   let draggedItemId: number | null = null;
   let dragOffsetX = 0;
   let dragOffsetY = 0;
@@ -148,6 +152,35 @@
     consolationTimers = [...consolationTimers, showTimer];
   }
 
+  // 사랑해(WIN) 합성 — 숨은 멜로디 + 하트 샤워 + 승리 오버레이. 한 판에 한 번만.
+  function triggerWin(winItem: GameItem) {
+    if (gameState !== 'playing') return;
+    gameState = 'won';
+    wonText = winItem.text;
+    playLoveMelody(skin);
+    burstCelebrationHearts(winItem);
+  }
+
+  // 승리 하트 샤워: 승리 글자 위치 + 화면 곳곳에서 한꺼번에 피어오른다.
+  function burstCelebrationHearts(winItem: GameItem) {
+    const center = percentToPixel(winItem.positionX, winItem.positionY);
+    const spots = [center];
+    for (let i = 0; i < 12; i++) {
+      spots.push({ x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight });
+    }
+    heartEffects = [...heartEffects, ...spots.map((p) => ({ id: nextHeartId++, x: p.x, y: p.y }))];
+  }
+
+  // 다시 하기: 진행 중 타이머·하트를 정리하고 새 시드 보드로 리셋(테마는 세션 유지).
+  function resetGame() {
+    consolationTimers.forEach((t) => clearTimeout(t));
+    consolationTimers = [];
+    heartEffects = [];
+    wonText = '';
+    gameState = 'playing';
+    seedBoard();
+  }
+
   // 글자가 화면 밖으로 나가지 않게 위치를 안전 마진 안으로 클램프
   function clampToBoard(positionX: number, positionY: number, fontSize: number) {
     const aspectRatio = window.innerWidth / window.innerHeight;
@@ -201,6 +234,7 @@
 
   // ── 탭(생성) / 배경 드래그(하트) ────────────────────────────
   function handleClick(event: MouseEvent | TouchEvent) {
+    if (gameState !== 'playing') return; // 승리 화면에선 탭으로 글자를 만들지 않는다
     // 글자를 만지고 뗀 직후 따라오는 합성 click은 무시 (탭한 글자 위에 새 글자가 생기지 않게)
     if (suppressNextClick) {
       suppressNextClick = false;
@@ -508,9 +542,12 @@
           mergedIds.add(item2.id);
           const merged = makeMergedItem(item1, item2, outcome);
           mergeSpawns.push(merged);
-          playMerge(outcome.tier, skin);
-          if (outcome.tier === 3 && !outcome.isWin) scheduleConsolationFade(merged.id);
-          // outcome.isWin('사랑해') 승리 연출은 커밋4에서
+          if (outcome.isWin) {
+            triggerWin(merged); // 사랑해 — 숨은 멜로디 + 하트 샤워 + 승리 오버레이
+          } else {
+            playMerge(outcome.tier, skin);
+            if (outcome.tier === 3) scheduleConsolationFade(merged.id); // 꽝은 잠깐 보였다 사라짐
+          }
           hasMovingItems = true;
           continue;
         }
@@ -628,6 +665,15 @@
   on:click|stopPropagation={() => muted.update((m) => !m)}
 >{$muted ? '🔇' : '🔊'}</button>
 
+{#if gameState === 'won'}
+  <div class="win-overlay">
+    <div class="win-card">
+      <div class="win-word">{wonText}</div>
+      <button class="replay" type="button" on:click={resetGame}>다시 하기</button>
+    </div>
+  </div>
+{/if}
+
 {#each heartEffects as effect (effect.id)}
   <HeartBubbles x={effect.x} y={effect.y} heartColors={currentTheme.heartColors} on:complete={() => removeHeartEffect(effect.id)} />
 {/each}
@@ -713,5 +759,72 @@
   .mute-toggle:hover,
   .mute-toggle:focus-visible {
     opacity: 0.8;
+  }
+
+  /* 승리 오버레이 — 사랑해를 크게 보여주고 다시 하기 제공. 하트 샤워(z:1000)는 이 위로 떠오른다. */
+  .win-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.18);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .win-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+    padding: 32px 40px;
+  }
+
+  .win-word {
+    font-size: 18vh;
+    color: #fff;
+    text-shadow: 0 0 24px rgba(255, 255, 255, 0.9), 0 0 48px rgba(255, 255, 255, 0.6);
+    user-select: none;
+    animation: win-pulse 1.5s ease-in-out infinite;
+  }
+
+  /* 제자리 크기 펄스 (animations.css의 .pulse는 absolute용 translate를 포함하므로 로컬로 정의) */
+  @keyframes win-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.06);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .win-word {
+      animation: none;
+    }
+  }
+
+  .replay {
+    padding: 12px 30px;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: background 0.2s ease, transform 0.1s ease;
+  }
+
+  .replay:hover,
+  .replay:focus-visible {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  .replay:active {
+    transform: scale(0.95);
   }
 </style>

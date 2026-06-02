@@ -57,10 +57,10 @@ export function variantsFor(
   return showMyu ? MYU_VARIANTS : MYA_VARIANTS;
 }
 
-// 가중치 기반 변형 추첨 → 인덱스
-export function pickVariantIndex(variants: MyaVariant[]): number {
+// 가중치 기반 변형 추첨 → 인덱스. rng는 주입 가능(기본 Math.random) — 테스트·게임에서 결정론적 사용.
+export function pickVariantIndex(variants: MyaVariant[], rng: () => number = Math.random): number {
   const total = variants.reduce((s, v) => s + v.weight, 0);
-  let r = Math.random() * total;
+  let r = rng() * total;
   for (let i = 0; i < variants.length; i++) {
     r -= variants[i].weight;
     if (r < 0) return i;

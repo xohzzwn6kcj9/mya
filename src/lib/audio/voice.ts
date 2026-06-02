@@ -235,3 +235,60 @@ export function playCollision(impactSpeed: number, fontSize: number, skin: Sound
     // 오디오 미지원/컨텍스트 실패 시 무음·무진동으로 degrade (정책: graceful)
   }
 }
+
+// 글자가 합쳐질 때(머지)의 짧은 상행 '딩딩'. playCollision과 같은 sine 'boop' 패밀리 +
+// 같은 skin 펜타토닉 스케일(협화 보장). 단계(tier)가 높을수록 위 옥타브에서 시작해
+// 합칠수록 더 높고 들뜬 성취감을 준다('사랑해' WIN의 숨은 멜로디는 호출부가 따로 처리).
+const MERGE_PEAK_GAIN = 0.14; // collision(≤0.15) 수준, love melody(0.18) 아래로 유지
+const MERGE_NOTE_DURATION_S = 0.13;
+const MERGE_NOTE_GAP_S = 0.07; // 두 음 간격 (상행 레가토)
+const MERGE_VIBRATE_MS = 18;
+
+// @param tier 합성 결과 단계(2 또는 3) — 높을수록 위 옥타브에서 시작
+// @param skin 현재 테마 음색 — letter voice/collision과 스케일·기준음 공유(협화)
+export function playMerge(tier: number, skin: SoundSkin): void {
+  if (isMuted()) return; // 뮤트면 소리·진동 모두 생략
+  const audio = getAudioContext();
+  if (!audio) return; // SSR/미지원/미탭 → 무음 graceful
+
+  try {
+    const master = getMasterGain();
+    if (!master) return; // 연결 대상 없음 → 무음
+
+    // 단계 → 시작 옥타브 (tier1→0, tier2→+1, tier3→+2). 합칠수록 음정이 올라간다.
+    const octave = Math.max(tier - 1, 0);
+    // skin 스케일의 두 음을 상행으로 — 펜타토닉이라 어떤 테마든 협화.
+    const degrees = [0, Math.min(2, skin.scale.length - 1)];
+    const t0 = audio.currentTime;
+
+    degrees.forEach((degree, i) => {
+      const start = t0 + i * MERGE_NOTE_GAP_S;
+      const freq = skin.baseFreq * Math.pow(2, (skin.scale[degree] + octave * 12) / 12);
+      const osc = audio.createOscillator();
+      const gain = audio.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(MERGE_PEAK_GAIN, start + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + MERGE_NOTE_DURATION_S);
+      osc.connect(gain).connect(master);
+      osc.start(start);
+      osc.stop(start + MERGE_NOTE_DURATION_S + 0.05);
+      osc.onended = () => {
+        try {
+          osc.disconnect();
+          gain.disconnect();
+        } catch {
+          // 정리 실패는 무시 (이미 끊긴 노드 등)
+        }
+      };
+    });
+
+    // 햅틱: 진입에서 뮤트를 이미 걸렀으므로 vibrate 지원 여부만 본다 (미지원이면 no-op).
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate(MERGE_VIBRATE_MS);
+    }
+  } catch {
+    // 오디오 미지원/컨텍스트 실패 시 무음·무진동으로 degrade (정책: graceful)
+  }
+}

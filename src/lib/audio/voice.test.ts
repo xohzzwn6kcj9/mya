@@ -106,7 +106,7 @@ vi.mock('./audio', () => ({
 }));
 
 // 모킹 선언 후 import (vitest가 자동 hoist하지만 명시적 순서로 가독성 유지).
-import { playCollision } from './voice';
+import { playCollision, playMerge } from './voice';
 
 // 결정적 검증용 음색: MAJOR_PENTATONIC, C4 기준.
 const SKIN: SoundSkin = {
@@ -169,5 +169,42 @@ describe('playCollision — 귀여운 sine boop 재설계', () => {
     playCollision(1, 22, SKIN); // 가장 큰 글자 → 옥타브 -1
     const big = h.created.oscillators[0].freqOps[1].v;
     expect(small).toBeGreaterThan(big);
+  });
+});
+
+describe('playMerge — 합성 상행 딩딩', () => {
+  beforeEach(() => {
+    h.reset();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('상행하는 두 개의 sine 음 (두 번째가 더 높다)', () => {
+    playMerge(2, SKIN);
+    expect(h.created.bufferSources).toBe(0); // 충돌음과 같은 sine 패밀리, 노이즈 없음
+    expect(h.created.oscillators).toHaveLength(2);
+    expect(h.created.oscillators.every((o) => o.type === 'sine')).toBe(true);
+    const first = h.created.oscillators[0].freqOps[0].v;
+    const second = h.created.oscillators[1].freqOps[0].v;
+    expect(second).toBeGreaterThan(first); // 상행 (합쳐지며 위로)
+  });
+
+  test('단계가 높을수록 더 높은 음에서 시작', () => {
+    playMerge(2, SKIN);
+    const tier2 = h.created.oscillators[0].freqOps[0].v;
+    h.reset();
+    playMerge(3, SKIN);
+    const tier3 = h.created.oscillators[0].freqOps[0].v;
+    expect(tier3).toBeGreaterThan(tier2);
+  });
+
+  test('피크 게인은 0.15 이하 — letter voice(0.18)를 덮지 않는다', () => {
+    playMerge(3, SKIN);
+    for (const g of h.created.gains) {
+      const peak = g.gainOps[1].v; // [set 0.0001, ramp peak, ramp 0.0001]
+      expect(peak).toBeLessThanOrEqual(0.15 + 1e-9);
+      expect(peak).toBeGreaterThan(0);
+    }
   });
 });

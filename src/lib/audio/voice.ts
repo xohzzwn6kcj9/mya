@@ -42,6 +42,13 @@ function clampPan(v: number): number {
   return v;
 }
 
+// fontSize(vh) → 옥타브 오프셋: 작은 글자 +1(또랑또랑 높게) ~ 큰 글자 -1(둥글게 낮게).
+// letter voice와 collision이 공유 — 두 소리의 음역 매핑을 한 곳에서 일관 관리.
+function fontSizeToOctave(fontSize: number): number {
+  const t = clamp01((fontSize - FONT_SIZE_MIN) / (FONT_SIZE_MAX - FONT_SIZE_MIN));
+  return Math.round((1 - t) * 2) - 1;
+}
+
 // 글자 하나의 목소리를 재생한다. 컨텍스트가 없거나 예외면 조용히 무음.
 export function playLetterVoice(opts: LetterVoiceOpts, skin: SoundSkin): void {
   if (isMuted()) return; // 뮤트면 노드 생성 자체를 건너뛴다 (글자마다 osc 체인 churn 방지)
@@ -57,8 +64,7 @@ export function playLetterVoice(opts: LetterVoiceOpts, skin: SoundSkin): void {
     const degree = ((opts.colorIndex % skin.scale.length) + skin.scale.length) % skin.scale.length;
     const semi = skin.scale[degree];
     // 글자 크기 → 옥타브: 작은 글자 +1, 큰 글자 -1 (작을수록 높게).
-    const t = (opts.fontSize - FONT_SIZE_MIN) / (FONT_SIZE_MAX - FONT_SIZE_MIN);
-    const octave = Math.round((1 - clamp01(t)) * 2) - 1;
+    const octave = fontSizeToOctave(opts.fontSize);
     const freq = skin.baseFreq * Math.pow(2, (semi + octave * 12) / 12);
 
     // ── 노드 체인: osc → gain → panner → masterGain ──
@@ -149,15 +155,23 @@ export function playLoveMelody(skin: SoundSkin): void {
   }
 }
 
-// 던지고 부딪힐 때의 짧은 충돌음 (벽 반사 / 글자간 충돌 공용).
+// 던지고 부딪힐 때의 짧고 귀여운 충돌음 (벽 반사 / 글자간 충돌 공용).
 // playLetterVoice/playLoveMelody와 동일 인프라(getAudioContext/getMasterGain) 위에서
 // 이미 만들어진 컨텍스트만 소비한다 — 여기서 AudioContext를 절대 생성하지 않는다.
-// 음색: 질량(fontSize²) 역매핑 — 큰 글자는 둔탁(저음·저컷오프), 작은 글자는 또랑(고음·고컷오프).
-// 볼륨·길이·진동 세기: impactSpeed 비례. 모든 throttle/임계값은 호출자(+page.svelte)가 책임진다.
+//
+// ※ 음색 재설계: 기존 화이트노이즈 버스트('tok'/거친 타격음)는 "안 귀엽다"는 피드백으로 폐기.
+//   글자가 통통 튕기는 느낌을 살린 부드러운 sine 'boop'(물방울 '뽀롱')으로 교체한다 —
+//   살짝 위에서 목표음으로 떨어지는 하향 피치 글라이드가 통통 튀는 귀여움의 핵심.
+//   음정은 letter voice와 같은 skin(스케일/baseFreq)을 공유해 글자 목소리와 같은 펜타토닉
+//   음계에 떨어진다 → 충돌이 잦아도 윈드차임/오르골처럼 협화로 들린다(불협 0).
+// 음정 매핑: fontSize → 옥타브(큰 글자 낮게/작은 글자 높게)로 질량감 유지,
+//   scale degree는 충돌마다 랜덤(윈드차임 변주 — 펜타토닉이라 어떤 조합도 협화).
+// 볼륨·길이·글라이드 폭·진동 세기: impactSpeed 비례. 모든 throttle/임계값은 호출자(+page.svelte)가 책임진다.
 //
 // @param impactSpeed 충돌 세기 (물리의 vw/vh-%/frame 단위, 정규화되지 않음 — 느리면 <1, 강하면 수 단위)
-// @param fontSize 충돌 글자 크기(vh, FONT_SIZE_MIN..FONT_SIZE_MAX) — 음색 결정
-export function playCollision(impactSpeed: number, fontSize: number): void {
+// @param fontSize 충돌 글자 크기(vh, FONT_SIZE_MIN..FONT_SIZE_MAX) — 옥타브 결정
+// @param skin 현재 테마 음색 — letter voice와 음계/기준음을 공유해 협화 보장
+export function playCollision(impactSpeed: number, fontSize: number, skin: SoundSkin): void {
   if (isMuted()) return; // 뮤트면 충돌음·진동 모두 생략
   const audio = getAudioContext();
   if (!audio) return; // SSR/미지원/미탭 → 무음 graceful
@@ -168,49 +182,44 @@ export function playCollision(impactSpeed: number, fontSize: number): void {
 
     // ── 입력 정규화 ── impactSpeed는 정규화되지 않은 물리 단위라 0~8로 클램프.
     const speed = Math.min(Math.max(impactSpeed, 0), 8);
-    // fontSize 0~1 정규화 (0=작은 글자, 1=큰 글자). 음색 역매핑의 기준.
-    const fNorm = clamp01((fontSize - FONT_SIZE_MIN) / (FONT_SIZE_MAX - FONT_SIZE_MIN));
 
-    // ── 음정/컷오프: 질량 역매핑 (큰 글자 둔탁, 작은 글자 또랑) ──
-    // 큰 글자일수록 낮은 기본 주파수·낮은 lowpass 컷오프 → 둔탁한 'tok'.
-    const baseFreq = 140 + (1 - fNorm) * 660; // ~800Hz(작은) → ~140Hz(큰)
-    const cutoff = 600 + (1 - fNorm) * 5400; // ~6000Hz(작은, 밝음) → ~600Hz(큰, 둔탁)
+    // ── 음정: letter voice와 동일 스케일에 양자화 (협화 보장) ──
+    // 옥타브: 작은 글자 높게 → 큰 글자 낮게 (letter voice와 음역 공유).
+    const octave = fontSizeToOctave(fontSize);
+    // degree: 충돌마다 랜덤 → 윈드차임 변주. 펜타토닉이라 어떤 음을 골라도 협화.
+    const semi = skin.scale[Math.floor(Math.random() * skin.scale.length)];
+    const targetFreq = skin.baseFreq * Math.pow(2, (semi + octave * 12) / 12);
 
-    // ── 엔벨로프 길이: impactSpeed 비례 (약 40ms 약한 탭 → 약 140ms 강한 충돌) ──
+    // ── 노드 체인: osc → gain → masterGain (충돌엔 위치정보가 없어 팬 생략, 중앙) ──
+    // 파형은 테마 무관 'sine' 고정 — 가장 둥글고 귀여운 'boop'(neon/hologram의 거친 saw/square 배제).
+    const osc = audio.createOscillator();
+    osc.type = 'sine';
+    const gain = audio.createGain();
     const t0 = audio.currentTime;
-    const dur = 0.04 + speed * 0.012;
 
-    // ── 음원: 짧은 white-noise 버스트 → lowpass → 게인 (물리적 충격음에 가까운 'tok') ──
-    const frames = Math.max(1, Math.ceil(audio.sampleRate * dur));
-    const buffer = audio.createBuffer(1, frames, audio.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < frames; i++) {
-      data[i] = Math.random() * 2 - 1;
-    }
-    const src = audio.createBufferSource();
-    src.buffer = buffer;
+    // ── 피치 글라이드: 살짝 위(+glideSemis)에서 목표음으로 하강 → 통통 튀는 'ploink' ──
+    // 글라이드 폭·시간은 impact 비례(셀수록 더 'boing'): +2반음/60ms(약) → +5반음/90ms(강).
+    const glideSemis = 2 + (speed / 8) * 3;
+    const glideTime = 0.06 + (speed / 8) * 0.03;
+    osc.frequency.setValueAtTime(targetFreq * Math.pow(2, glideSemis / 12), t0);
+    osc.frequency.exponentialRampToValueAtTime(targetFreq, t0 + glideTime);
 
-    const filter = audio.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(cutoff, t0);
-    // baseFreq를 살짝 반영해 큰 글자에서 저역이 더 도드라지게 (질량감 강화).
-    filter.Q.setValueAtTime(0.7 + (1 - fNorm) * 0.6, t0);
+    // ── 엔벨로프: 빠른 attack + 부드러운 지수 release (impact 비례 길이) ──
+    // 볼륨 상한 0.15 — 좋아하는 letter voice(피크 0.18, 지속음) 아래로 유지해
+    //   충돌음이 글자 목소리를 덮지 않게(주연은 화면전환음). 동시 최대 3음 합산 클리핑도 방지.
+    const dur = 0.1 + speed * 0.02; // ~100ms(약) → ~260ms(강)
+    const peak = Math.min(0.05 + speed * 0.035, 0.15);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
-    // ── 게인 엔벨로프: 볼륨은 impactSpeed 비례, 상한 0.5로 동시다발 클리핑 방지 ──
-    const g = audio.createGain();
-    const vol = Math.min(0.04 + speed * 0.06, 0.5);
-    g.gain.setValueAtTime(vol, t0);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-
-    // 체인: src → filter → g → masterGain (반드시 master 버스 경유 → F0 뮤트/마스터볼륨 적용).
-    src.connect(filter).connect(g).connect(master);
-    src.start(t0);
-    src.stop(t0 + dur);
-    src.onended = () => {
+    osc.connect(gain).connect(master);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.05);
+    osc.onended = () => {
       try {
-        src.disconnect();
-        filter.disconnect();
-        g.disconnect();
+        osc.disconnect();
+        gain.disconnect();
       } catch {
         // 정리 실패는 무시 (이미 끊긴 노드 등)
       }

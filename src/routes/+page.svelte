@@ -963,7 +963,8 @@
     if (impact < minImpact) return;                                      // 미세 충돌 무시
     if (collisionSoundsThisFrame >= COLLISION_SOUNDS_PER_FRAME) return;  // 프레임당 상한
     collisionSoundsThisFrame++;
-    playCollision(impact, fontSize);
+    // skin 전달 → 충돌음이 글자 목소리와 같은 음계에 떨어져 협화(윈드차임).
+    playCollision(impact, fontSize, soundSkinFor(currentTheme.id as ThemeId));
   }
 
   // 물리 시뮬레이션 업데이트

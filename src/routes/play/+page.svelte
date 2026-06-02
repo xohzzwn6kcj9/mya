@@ -10,7 +10,7 @@
   import { initAudioOnFirstGesture, muted } from '$lib/audio/audio';
   import { soundSkinFor } from '$lib/audio/soundSkins';
   import { playLetterVoice, playCollision, playMerge, playLoveMelody } from '$lib/audio/voice';
-  import { randomBaseWord, mergeResult, type MergeOutcome } from '$lib/game/mergeTree';
+  import { mergeResult, randomLineage, baseFor, marksFor, type MergeOutcome, type Lineage } from '$lib/game/mergeTree';
   import { FONT_SIZE_BY_TIER, CONSOLATION_FADE_MS } from '$lib/game/constants';
 
   // 잔상 위치
@@ -23,7 +23,8 @@
   // 게임 글자 아이템 — 메인의 TextItem을 머지 게임용으로 단순화(text+tier로 메시지/계열을 대체).
   interface GameItem {
     id: number;
-    text: string; // 표시 글자 (먀 · 뮤 · 먀아 · 뮤우 · 사랑해 · 꽝)
+    text: string; // 표시 글자 (베이스 + 마크, 예: 먀 · 뮤! · 먀아? · 사랑해)
+    lineage: Lineage | null; // 매칭 기준(먀/뮤 계열). 3글자(종착)는 null
     tier: 1 | 2 | 3;
     fontIndex: number;
     colorIndex: number;
@@ -102,6 +103,7 @@
   // 새 글자 아이템 — 탭 생성과 (커밋3) 머지 결과가 공유한다.
   function makeItem(opts: {
     text: string;
+    lineage: Lineage | null;
     tier: 1 | 2 | 3;
     positionX: number;
     positionY: number;
@@ -113,6 +115,7 @@
     return {
       id: nextItemId++,
       text: opts.text,
+      lineage: opts.lineage,
       tier: opts.tier,
       fontIndex: getRandomIndex(fonts.length),
       colorIndex: opts.colorIndex ?? getRandomIndex(currentTheme.textColors.length),
@@ -150,12 +153,15 @@
     };
   }
 
-  // 같은 글자 두 개가 합쳐진 결과 아이템 — 중점에서 두 속도의 평균(감쇠)으로 안착, 색은 승계.
+  // 같은 계열 두 개가 합쳐진 결과 아이템 — 중점에서 두 속도의 평균(감쇠)으로 안착, 색은 승계.
+  // 표시 글자 = 결과 베이스 + 랜덤 마크.
   function makeMergedItem(a: GameItem, b: GameItem, outcome: MergeOutcome): GameItem {
-    const fontSize = sizeForTierVh(outcome.tier, outcome.text);
-    const pos = clampCenterForWord((a.positionX + b.positionX) / 2, (a.positionY + b.positionY) / 2, fontSize, outcome.text);
+    const text = outcome.base + marksFor();
+    const fontSize = sizeForTierVh(outcome.tier, text);
+    const pos = clampCenterForWord((a.positionX + b.positionX) / 2, (a.positionY + b.positionY) / 2, fontSize, text);
     return makeItem({
-      text: outcome.text,
+      text,
+      lineage: outcome.lineage,
       tier: outcome.tier,
       positionX: pos.x,
       positionY: pos.y,
@@ -220,16 +226,17 @@
     };
   }
 
-  // 빈 곳 탭 시 1글자(먀/뮤) 탄약 생성 + 글자 목소리
+  // 빈 곳 탭 시 1글자(먀/뮤, 랜덤 마크) 탄약 생성 + 글자 목소리
   function spawnLetter(clientX: number, clientY: number) {
-    const text = randomBaseWord();
+    const lineage = randomLineage();
+    const text = baseFor(lineage, 1) + marksFor();
     const fontSize = FONT_SIZE_BY_TIER[1];
     const raw = pixelToPercent(clientX, clientY);
     const pos = clampToBoard(raw.x, raw.y, fontSize);
-    const item = makeItem({ text, tier: 1, positionX: pos.x, positionY: pos.y });
+    const item = makeItem({ text, lineage, tier: 1, positionX: pos.x, positionY: pos.y });
     gameItems = [...gameItems, item];
     playLetterVoice(
-      { colorIndex: item.colorIndex, fontSize: item.fontSize, positionX: item.positionX, showMyu: text === '뮤' },
+      { colorIndex: item.colorIndex, fontSize: item.fontSize, positionX: item.positionX, showMyu: lineage === 'myu' },
       skin
     );
   }
@@ -551,7 +558,7 @@
       return { ...item, positionX: newX, positionY: newY, velocityX: newVelX, velocityY: newVelY, trail: updateTrail(item) };
     });
 
-    // 2단계: 글자간 충돌 → 같은 글자면 합치기(머지), 아니면 튕김.
+    // 2단계: 글자간 충돌 → 같은 계열·단계면 합치기(머지), 아니면 튕김.
     const updated = [...gameItems];
     const mergedIds = new Set<number>();
     const mergeSpawns: GameItem[] = [];
@@ -563,9 +570,9 @@
         const collision = checkAABBCollision(getBoundingBox(item1), getBoundingBox(item2));
         if (!collision.colliding) continue;
 
-        const outcome = mergeResult(item1.text, item2.text);
+        const outcome = mergeResult(item1.lineage, item1.tier, item2.lineage, item2.tier);
         if (outcome) {
-          // 같은 글자 → 합치기 (각 글자는 프레임당 한 번만 합쳐진다)
+          // 같은 계열·단계 → 합치기 (각 글자는 프레임당 한 번만 합쳐진다)
           mergedIds.add(item1.id);
           mergedIds.add(item2.id);
           const merged = makeMergedItem(item1, item2, outcome);
@@ -609,14 +616,15 @@
 
   // 시작 보드: 던질 짝이 바로 보이게 먀·뮤 2쌍을 고정 위치(2×2)에 둔다.
   // 위치를 고정해 정적 프리렌더(SSR)와 클라이언트가 일치한다(첫 페인트 좌표 점프 없음).
+  // 마크 없는 고정 텍스트로 시드(프리렌더/클라이언트 텍스트 일치). 마크는 탭 생성·머지부터.
   function seedBoard() {
-    const seeds = [
-      { text: '먀', x: 32, y: 38 },
-      { text: '먀', x: 68, y: 38 },
-      { text: '뮤', x: 32, y: 64 },
-      { text: '뮤', x: 68, y: 64 }
+    const seeds: { lineage: Lineage; text: string; x: number; y: number }[] = [
+      { lineage: 'mya', text: '먀', x: 32, y: 38 },
+      { lineage: 'mya', text: '먀', x: 68, y: 38 },
+      { lineage: 'myu', text: '뮤', x: 32, y: 64 },
+      { lineage: 'myu', text: '뮤', x: 68, y: 64 }
     ];
-    gameItems = seeds.map((s) => makeItem({ text: s.text, tier: 1, positionX: s.x, positionY: s.y }));
+    gameItems = seeds.map((s) => makeItem({ text: s.text, lineage: s.lineage, tier: 1, positionX: s.x, positionY: s.y }));
   }
 
   seedBoard();

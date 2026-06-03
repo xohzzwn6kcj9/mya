@@ -671,6 +671,18 @@
   });
 </script>
 
+<svelte:head>
+  <title>먀 머지 게임</title>
+  <meta property="og:title" content="먀 머지 게임 💕" />
+  <meta property="og:description" content="먀·뮤를 합쳐 '사랑해'를 만들어보세요!" />
+  <meta property="og:url" content="https://xohzzwn6kcj9.github.io/mya/play" />
+  <meta property="og:image" content="https://xohzzwn6kcj9.github.io/mya/og-play.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="1200" />
+  <meta property="og:image:type" content="image/png" />
+  <meta name="twitter:image" content="https://xohzzwn6kcj9.github.io/mya/og-play.png" />
+</svelte:head>
+
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
 <main
   style="background: {displayGradient}; --fade-ms: {CONSOLATION_FADEOUT_MS}ms"

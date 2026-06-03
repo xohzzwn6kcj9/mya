@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Single+Day&display=swap" rel="stylesheet" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            width: 1200px;
+            height: 1200px;
+            overflow: hidden;
+            position: relative;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 55%, #ffd3a5 100%);
+            font-family: 'Single Day', cursive;
+        }
+
+        /* 승리 순간 — 가운데 큰 손글씨 "사랑해" */
+        .love {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -54%) rotate(-3deg);
+            font-size: 300px;
+            line-height: 1;
+            color: #fff;
+            letter-spacing: 6px;
+            text-shadow:
+                0 0 40px rgba(255, 255, 255, 0.9),
+                0 8px 24px rgba(214, 64, 105, 0.45),
+                4px 4px 0 rgba(255, 130, 160, 0.55);
+            white-space: nowrap;
+            z-index: 5;
+        }
+
+        /* 하단 캡션 — 게임 이름 */
+        .caption {
+            position: absolute;
+            bottom: 96px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 78px;
+            color: #fff;
+            letter-spacing: 4px;
+            padding: 18px 56px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.22);
+            box-shadow: 0 6px 20px rgba(214, 64, 105, 0.25);
+            text-shadow: 0 3px 10px rgba(214, 64, 105, 0.35);
+            white-space: nowrap;
+            z-index: 5;
+        }
+
+        /* 흩뿌려진 하트·반짝이·주사위 (절대배치 데코) */
+        .deco {
+            position: absolute;
+            line-height: 1;
+            z-index: 2;
+            text-shadow: 0 4px 14px rgba(214, 64, 105, 0.25);
+        }
+        /* 글자 뒤로 살짝 비치는 반투명 외곽 하트 */
+        .ghost {
+            position: absolute;
+            line-height: 1;
+            color: rgba(255, 255, 255, 0.5);
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- back layer: soft outline hearts -->
+    <div class="ghost" style="top: 120px; left: 90px;   font-size: 200px; transform: rotate(-12deg);">♡</div>
+    <div class="ghost" style="bottom: 150px; right: 70px; font-size: 240px; transform: rotate(10deg);">♡</div>
+    <div class="ghost" style="top: 380px; right: 130px;  font-size: 130px; transform: rotate(8deg);">♡</div>
+
+    <!-- top: dice + sparkles -->
+    <div class="deco" style="top: 110px; left: 50%; transform: translateX(-50%) rotate(-8deg); font-size: 150px;">🎲</div>
+    <div class="deco" style="top: 90px;  left: 250px; font-size: 84px;">✨</div>
+    <div class="deco" style="top: 160px; right: 250px; font-size: 70px;">✨</div>
+
+    <!-- heart shower around the word -->
+    <div class="deco" style="top: 300px;  left: 140px;  font-size: 130px; transform: rotate(-14deg);">💕</div>
+    <div class="deco" style="top: 250px;  right: 150px; font-size: 110px; transform: rotate(12deg);">💖</div>
+    <div class="deco" style="top: 470px;  left: 60px;   font-size: 96px;  transform: rotate(6deg);">💗</div>
+    <div class="deco" style="top: 520px;  right: 70px;  font-size: 124px; transform: rotate(-10deg);">💞</div>
+    <div class="deco" style="bottom: 360px; left: 150px; font-size: 108px; transform: rotate(9deg);">💖</div>
+    <div class="deco" style="bottom: 320px; right: 170px; font-size: 92px; transform: rotate(-7deg);">💕</div>
+    <div class="deco" style="bottom: 250px; left: 50%;  transform: translateX(-50%) rotate(4deg); font-size: 80px;">💗</div>
+    <div class="deco" style="top: 640px;  left: 40px;   font-size: 72px;  transform: rotate(-6deg);">✨</div>
+    <div class="deco" style="top: 600px;  right: 50px;  font-size: 64px;">✨</div>
+
+    <!-- the win word -->
+    <div class="love">사랑해</div>
+
+    <!-- game name -->
+    <div class="caption">먀 머지 게임 💕</div>
+</body>
+</html>

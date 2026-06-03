@@ -1,48 +1,78 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <link href="https://fonts.googleapis.com/css2?family=Single+Day&display=swap" rel="stylesheet">
+    <meta charset="UTF-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Single+Day&display=swap" rel="stylesheet" />
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            margin: 0;
-            padding: 0;
             width: 1200px;
             height: 1200px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+            overflow: hidden;
+            position: relative;
+            background: linear-gradient(135deg, #ffafbd 0%, #ffc3a0 55%, #d4a5e8 100%);
             font-family: 'Single Day', cursive;
         }
-        h1 {
-            font-size: 200px;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-            margin: 0;
-            text-align: center;
-        }
-        .favicon {
+
+        /* 가운데 큰 "먀" */
+        .hero {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 32px;
-            height: 32px;
-            font-size: 32px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: #FF69B4;
-            background: linear-gradient(45deg, #FFE5E5, #E5F5F5);
-            font-family: 'Nanum Pen Script', cursive;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
-            opacity: 0;
-            transform: scale(0.8);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -52%) rotate(-2deg);
+            font-size: 440px;
+            line-height: 1;
+            color: #fff;
+            text-shadow:
+                0 0 50px rgba(255, 255, 255, 0.9),
+                0 10px 30px rgba(160, 90, 150, 0.4),
+                5px 5px 0 rgba(255, 150, 175, 0.5);
+            z-index: 5;
+        }
+
+        /* 주변 속삭임 — 앱에 떠다니는 메시지들 (반투명 흰색으로 뒤로 물러남) */
+        .whisper {
+            position: absolute;
+            line-height: 1;
+            color: rgba(255, 255, 255, 0.78);
+            text-shadow: 0 4px 14px rgba(160, 90, 150, 0.22);
+            z-index: 3;
+        }
+        .whisper.soft { color: rgba(255, 255, 255, 0.55); }
+
+        .deco {
+            position: absolute;
+            line-height: 1;
+            z-index: 2;
+            text-shadow: 0 4px 14px rgba(160, 90, 150, 0.2);
         }
     </style>
 </head>
 <body>
-    <h1>먀</h1>
-    <div class="favicon">먀</div>
+    <!-- whispers: 실제 앱 메시지 어휘 (먀·뮤·사랑해 계열) -->
+    <div class="whisper"      style="top: 120px; right: 130px; font-size: 96px;  transform: rotate(7deg);">사랑해</div>
+    <div class="whisper soft" style="top: 250px; left: 110px;  font-size: 78px;  transform: rotate(-9deg);">뮤?</div>
+    <div class="whisper"      style="top: 360px; right: 90px;  font-size: 70px;  transform: rotate(11deg);">뮤!</div>
+    <div class="whisper soft" style="top: 470px; left: 70px;   font-size: 88px;  transform: rotate(6deg);">먀아</div>
+    <div class="whisper"      style="bottom: 300px; right: 110px; font-size: 92px; transform: rotate(-8deg);">먀먀</div>
+    <div class="whisper soft" style="bottom: 220px; left: 130px; font-size: 74px; transform: rotate(9deg);">뮤우</div>
+    <div class="whisper"      style="bottom: 130px; right: 200px; font-size: 100px; transform: rotate(5deg);">사랑해</div>
+    <div class="whisper soft" style="bottom: 360px; left: 90px;  font-size: 66px; transform: rotate(-6deg);">먀?</div>
+
+    <!-- hearts & sparkles -->
+    <div class="deco" style="top: 200px;  left: 280px; font-size: 70px; transform: rotate(-12deg);">💕</div>
+    <div class="deco" style="top: 430px;  right: 230px; font-size: 58px;">💗</div>
+    <div class="deco" style="bottom: 250px; right: 300px; font-size: 64px; transform: rotate(8deg);">💖</div>
+    <div class="deco" style="bottom: 180px; left: 250px; font-size: 60px; transform: rotate(-7deg);">💞</div>
+    <div class="deco" style="top: 560px;  left: 200px; font-size: 46px;">✨</div>
+    <div class="deco" style="bottom: 470px; right: 180px; font-size: 50px;">✨</div>
+
+    <!-- the hero -->
+    <div class="hero">먀</div>
+
+    <!-- favicon source: top-left 32px clip stays clean (배경만) -->
+    <div style="position:absolute; top:0; left:0; width:32px; height:32px; opacity:0;">먀</div>
 </body>
-</html> 
+</html>

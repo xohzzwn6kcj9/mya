@@ -14,7 +14,9 @@ const config = {
 		adapter: adapter({
 			pages: 'build',
 			assets: 'build',
-			fallback: 'index.html',
+			// 404.html = SPA 폴백(미프리렌더 경로용). index.html을 쓰면 루트(/) 프리렌더
+			// 결과를 폴백 셸이 덮어써 OG 메타가 사라진다 → GitHub Pages 표준대로 404.html 사용.
+			fallback: '404.html',
 			precompress: false,
 			strict: true
 		}),

@@ -66,6 +66,19 @@
             color: rgba(255, 255, 255, 0.5);
             z-index: 1;
         }
+        /* 머지 재료 타일 — 합치는 먀·뮤 조각 (둥근 칩) */
+        .tile {
+            position: absolute;
+            line-height: 1;
+            color: #fff;
+            padding: 10px 30px 18px;
+            border-radius: 36px;
+            background: rgba(255, 255, 255, 0.26);
+            box-shadow: 0 8px 22px rgba(214, 64, 105, 0.28);
+            text-shadow: 0 3px 10px rgba(214, 64, 105, 0.35);
+            white-space: nowrap;
+            z-index: 4;
+        }
     </style>
 </head>
 <body>
@@ -79,16 +92,19 @@
     <div class="deco" style="top: 90px;  left: 250px; font-size: 84px;">✨</div>
     <div class="deco" style="top: 160px; right: 250px; font-size: 70px;">✨</div>
 
+    <!-- 머지 재료: 합치는 먀·뮤 타일 (결과인 사랑해 주변에) -->
+    <div class="tile" style="top: 280px;  left: 80px;   font-size: 112px; transform: rotate(-8deg);">먀</div>
+    <div class="tile" style="top: 250px;  right: 85px;  font-size: 112px; transform: rotate(9deg);">뮤</div>
+    <div class="tile" style="bottom: 350px; left: 70px;  font-size: 92px;  transform: rotate(7deg);">먀먀</div>
+    <div class="tile" style="bottom: 320px; right: 80px; font-size: 92px;  transform: rotate(-6deg);">뮤뮤</div>
+
     <!-- heart shower around the word -->
-    <div class="deco" style="top: 300px;  left: 140px;  font-size: 130px; transform: rotate(-14deg);">💕</div>
-    <div class="deco" style="top: 250px;  right: 150px; font-size: 110px; transform: rotate(12deg);">💖</div>
     <div class="deco" style="top: 470px;  left: 60px;   font-size: 96px;  transform: rotate(6deg);">💗</div>
     <div class="deco" style="top: 520px;  right: 70px;  font-size: 124px; transform: rotate(-10deg);">💞</div>
-    <div class="deco" style="bottom: 360px; left: 150px; font-size: 108px; transform: rotate(9deg);">💖</div>
-    <div class="deco" style="bottom: 320px; right: 170px; font-size: 92px; transform: rotate(-7deg);">💕</div>
     <div class="deco" style="bottom: 250px; left: 50%;  transform: translateX(-50%) rotate(4deg); font-size: 80px;">💗</div>
     <div class="deco" style="top: 640px;  left: 40px;   font-size: 72px;  transform: rotate(-6deg);">✨</div>
     <div class="deco" style="top: 600px;  right: 50px;  font-size: 64px;">✨</div>
+    <div class="deco" style="bottom: 430px; right: 230px; font-size: 70px; transform: rotate(8deg);">💕</div>
 
     <!-- the win word -->
     <div class="love">사랑해</div>

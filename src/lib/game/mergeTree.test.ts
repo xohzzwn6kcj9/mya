@@ -28,15 +28,17 @@ describe('randomLineage', () => {
 });
 
 describe('baseFor — 계열·단계별 표시 베이스', () => {
-  test('1글자는 계열 기본형', () => {
+  test('1글자는 계열 기본형 (뮤 계열은 뮤·뮷)', () => {
     expect(baseFor('mya', 1, constant(0))).toBe('먀');
     expect(baseFor('myu', 1, constant(0))).toBe('뮤');
+    expect(baseFor('myu', 1, constant(0.99))).toBe('뮷');
   });
-  test('2글자는 계열별 변형 둘 중 하나', () => {
+  test('2글자는 계열별 변형 중 하나 (뮤 계열은 뮤우·뮤뮤·쁫뮤)', () => {
     expect(baseFor('mya', 2, constant(0))).toBe('먀아');
     expect(baseFor('mya', 2, constant(0.99))).toBe('먀먀');
     expect(baseFor('myu', 2, constant(0))).toBe('뮤우');
-    expect(baseFor('myu', 2, constant(0.99))).toBe('뮤뮤');
+    expect(baseFor('myu', 2, constant(0.5))).toBe('뮤뮤');
+    expect(baseFor('myu', 2, constant(0.99))).toBe('쁫뮤');
   });
 });
 

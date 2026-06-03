@@ -26,8 +26,10 @@ export const MYA_VARIANTS: MyaVariant[] = [
 // 뮤 계열 — 먀의 짝꿍, 무르고 칭얼대는 톤
 export const MYU_VARIANTS: MyaVariant[] = [
   { text: '뮤', weight: 0.5, meaning: '먀의 짝꿍, 나직한 보챔' },
+  { text: '뮷', weight: 0.15, meaning: '받침으로 톡 끊어 내뱉는 짧은 뮤' },
   { text: '뮤우', weight: 0.4, meaning: '늘인 칭얼·반가움 (느낌표와 한 몸)' },
   { text: '뮤뮤', weight: 0.1, meaning: '장난·삐짐의 들뜬 부름' },
+  { text: '쁫뮤', weight: 0.12, meaning: '입술 터지듯 톡 튀어나오는 들뜬 뮤' },
   { text: '뮤뮤뮤', weight: 0.06, meaning: '토라짐·투정 (길수록 강도↑)' },
   { text: '뮤웅', weight: 0.05, meaning: '둥글게 수긍하는 칭얼' },
 ];

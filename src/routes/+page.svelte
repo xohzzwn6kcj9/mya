@@ -1169,6 +1169,18 @@
   });
 </script>
 
+<svelte:head>
+  <title>먀</title>
+  <meta property="og:title" content="먀" />
+  <meta property="og:description" content="특별한 메시지를 확인해보세요" />
+  <meta property="og:url" content="https://xohzzwn6kcj9.github.io/mya/" />
+  <meta property="og:image" content="https://xohzzwn6kcj9.github.io/mya/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="1200" />
+  <meta property="og:image:type" content="image/png" />
+  <meta name="twitter:image" content="https://xohzzwn6kcj9.github.io/mya/og-image.png" />
+</svelte:head>
+
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
 <main
   style="background: {displayGradient}"
